@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Typography, Table, Tag, Select, Space, Spin, Alert } from 'antd';
 import { usePermits } from '@ncts/api-client';
 import type { Permit } from '@ncts/shared-types';
@@ -69,6 +70,7 @@ export default function PermitsPage() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
+  const navigate = useNavigate();
   const { data, isLoading, error } = usePermits({ page, limit: 20, status: statusFilter, permitType: typeFilter });
 
   if (error) return <Alert type="error" message="Failed to load permits" showIcon />;
@@ -111,6 +113,7 @@ export default function PermitsPage() {
           columns={columns}
           dataSource={data?.data}
           rowKey="id"
+          onRow={(record) => ({ onClick: () => navigate(`/permits/${record.id}`), style: { cursor: 'pointer' } })}
           pagination={{
             current: data?.meta?.page ?? 1,
             pageSize: data?.meta?.limit ?? 20,

@@ -97,4 +97,42 @@ export class VerificationService {
       verifiedAt: new Date().toISOString(),
     };
   }
+
+  async reportSuspicious(trackingId: string, reason: string) {
+    // Log the report — in production this would create a record in a dedicated table
+    // and trigger an alert to investigators
+    console.log(`[SUSPICIOUS REPORT] trackingId=${trackingId}, reason=${reason}, timestamp=${new Date().toISOString()}`);
+
+    // Attempt to record in audit event log if the tracking ID exists
+    try {
+      const plant = await this.prisma.plant.findUnique({
+        where: { trackingId },
+        select: { id: true, tenantId: true },
+      });
+
+      if (plant) {
+        const lastEvent = await this.prisma.auditEvent.findFirst({ orderBy: { sequenceNumber: 'desc' } });
+        const previousHash = lastEvent?.eventHash ?? '0'.repeat(64);
+
+        await this.prisma.auditEvent.create({
+          data: {
+            entityType: 'Plant',
+            entityId: plant.id,
+            action: 'SUSPICIOUS_REPORT',
+            actorId: 'public-consumer',
+            actorRole: 'consumer',
+            tenantId: plant.tenantId,
+            payload: { trackingId, reason, reportedAt: new Date().toISOString() },
+            previousHash,
+            eventHash: require('crypto').createHash('sha256').update(`${previousHash}:SUSPICIOUS_REPORT:${plant.id}`).digest('hex'),
+          },
+        });
+      }
+    } catch (err) {
+      // Non-critical — log and continue
+      console.error('Failed to create audit event for suspicious report:', err);
+    }
+
+    return { success: true, message: 'Report received. Thank you for helping keep our supply chain safe.' };
+  }
 }

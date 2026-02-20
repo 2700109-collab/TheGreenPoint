@@ -5,6 +5,7 @@ import AdminHeader from './components/layout/AdminHeader';
 import NationalDashboard from './pages/NationalDashboard';
 import OperatorsPage from './pages/OperatorsPage';
 import PermitsPage from './pages/PermitsPage';
+import PermitDetailPage from './pages/PermitDetailPage';
 import CompliancePage from './pages/CompliancePage';
 import FacilitiesMapPage from './pages/FacilitiesMapPage';
 
@@ -21,6 +22,7 @@ function App() {
             <Route path="/" element={<NationalDashboard />} />
             <Route path="/operators" element={<OperatorsPage />} />
             <Route path="/permits" element={<PermitsPage />} />
+            <Route path="/permits/:id" element={<PermitDetailPage />} />
             <Route path="/compliance" element={<CompliancePage />} />
             <Route path="/facilities-map" element={<FacilitiesMapPage />} />
           </Routes>

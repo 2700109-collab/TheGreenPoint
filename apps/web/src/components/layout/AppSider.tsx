@@ -3,6 +3,7 @@ import {
   DashboardOutlined,
   EnvironmentOutlined,
   ExperimentOutlined,
+  PlusCircleOutlined,
   SwapOutlined,
   BarChartOutlined,
   DollarOutlined,
@@ -27,6 +28,11 @@ const menuItems = [
     key: '/plants',
     icon: <ExperimentOutlined />,
     label: 'Plants',
+  },
+  {
+    key: '/plants/register',
+    icon: <PlusCircleOutlined />,
+    label: 'Register Plants',
   },
   {
     key: '/harvests',

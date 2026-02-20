@@ -9,6 +9,7 @@ import HarvestsPage from './pages/HarvestsPage';
 import TransfersPage from './pages/TransfersPage';
 import SalesPage from './pages/SalesPage';
 import LabResultsPage from './pages/LabResultsPage';
+import PlantRegisterPage from './pages/PlantRegisterPage';
 
 const { Content } = Layout;
 
@@ -23,6 +24,7 @@ function App() {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/facilities" element={<FacilitiesPage />} />
             <Route path="/plants" element={<PlantsPage />} />
+            <Route path="/plants/register" element={<PlantRegisterPage />} />
             <Route path="/harvests" element={<HarvestsPage />} />
             <Route path="/transfers" element={<TransfersPage />} />
             <Route path="/sales" element={<SalesPage />} />

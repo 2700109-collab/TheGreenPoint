@@ -53,3 +53,4 @@ pnpm-debug.log*
 # Temp
 tmp/
 temp/
+.vercel
