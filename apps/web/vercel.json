@@ -1,6 +1,5 @@
 {
-  "buildCommand": "cd ../.. && npx turbo build --filter=@ncts/web",
-  "installCommand": "cd ../.. && pnpm install",
+  "buildCommand": "vite build",
   "framework": "vite",
   "outputDirectory": "dist"
 }
