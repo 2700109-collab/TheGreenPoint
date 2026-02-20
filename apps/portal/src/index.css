@@ -1,0 +1,371 @@
+/* ==========================================================================
+   NCTS Portal — Global Styles
+   South African Government-grade design system
+   ========================================================================== */
+
+:root {
+  --ncts-navy: #003B5C;
+  --ncts-navy-dark: #00263A;
+  --ncts-gold: #D4A843;
+  --ncts-green: #007A4D;
+  --ncts-red: #C8102E;
+  --ncts-bg: #F0F2F5;
+  --ncts-card: #FFFFFF;
+  --ncts-text: #1A2332;
+  --ncts-text-secondary: #5A6B7F;
+  --ncts-border: #E2E8F0;
+  --ncts-sidebar: #001529;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--ncts-text);
+  background: var(--ncts-bg);
+}
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #C1C7D0; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #A0A8B4; }
+
+/* ---- Login Page ---- */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--ncts-navy-dark) 0%, var(--ncts-navy) 50%, #004B6E 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.login-page::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(212, 168, 67, 0.08) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.login-page::after {
+  content: '';
+  position: absolute;
+  bottom: -30%;
+  left: -10%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(0, 122, 77, 0.06) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.login-container {
+  width: 100%;
+  max-width: 440px;
+  padding: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.login-coat-of-arms {
+  font-size: 48px;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.login-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.login-subtitle {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 400;
+  letter-spacing: 0.5px;
+}
+
+.login-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 40px 32px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.login-card .ant-form-item-label > label {
+  font-weight: 500;
+  color: var(--ncts-text);
+}
+
+.login-divider {
+  text-align: center;
+  margin: 20px 0;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+}
+
+.login-demo-info {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-top: 20px;
+}
+
+.login-demo-info h4 {
+  color: var(--ncts-gold);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.login-demo-info p {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.login-demo-info code {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.login-footer {
+  text-align: center;
+  margin-top: 24px;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 11px;
+}
+
+/* ---- Dashboard KPI Cards ---- */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.kpi-card {
+  background: #FFFFFF;
+  border-radius: 12px;
+  padding: 20px 24px;
+  border: 1px solid var(--ncts-border);
+  transition: box-shadow 0.2s;
+}
+
+.kpi-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.kpi-card-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ncts-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.kpi-card-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ncts-text);
+  line-height: 1;
+}
+
+.kpi-card-change {
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.kpi-card-change.positive { color: var(--ncts-green); }
+.kpi-card-change.negative { color: var(--ncts-red); }
+
+/* ---- Page Header ---- */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.page-header h2 {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--ncts-text);
+  margin: 0;
+}
+
+/* ---- Content Cards ---- */
+.content-card {
+  background: #FFFFFF;
+  border-radius: 12px;
+  border: 1px solid var(--ncts-border);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.content-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ncts-text);
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--ncts-border);
+}
+
+/* ---- Verify Layout ---- */
+.verify-layout {
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--ncts-navy) 0%, var(--ncts-navy-dark) 100%);
+}
+
+.verify-header {
+  padding: 16px 24px;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.verify-header-logo {
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.verify-content {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.verify-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+
+.verify-status {
+  display: inline-block;
+  padding: 8px 20px;
+  border-radius: 100px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.verify-status.pass {
+  background: #ECFDF5;
+  color: #059669;
+  border: 1px solid #A7F3D0;
+}
+
+.verify-status.fail {
+  background: #FEF2F2;
+  color: #DC2626;
+  border: 1px solid #FECACA;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.info-item {
+  padding: 12px 0;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.info-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ncts-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.info-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ncts-text);
+}
+
+.tracking-id {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 13px;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .info-grid { grid-template-columns: 1fr; }
+  .login-card { padding: 28px 20px; }
+}
+
+/* ---- Ant Design Overrides ---- */
+.ant-layout-sider {
+  border-right: 1px solid rgba(255,255,255,0.06) !important;
+}
+
+.ant-layout-sider .ant-menu-item {
+  margin: 2px 8px !important;
+  border-radius: 8px !important;
+}
+
+.ant-table-thead > tr > th {
+  font-weight: 600 !important;
+  font-size: 12px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  color: var(--ncts-text-secondary) !important;
+}
+
+.ant-tag {
+  border-radius: 6px !important;
+  font-weight: 500 !important;
+  font-size: 12px !important;
+}
+
+.ant-card {
+  border-radius: 12px !important;
+  border-color: var(--ncts-border) !important;
+}
+
+.ant-btn-primary {
+  font-weight: 500;
+}
