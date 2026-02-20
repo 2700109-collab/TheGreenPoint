@@ -10,6 +10,7 @@
     "./theme": "./src/theme/index.ts"
   },
   "scripts": {
+    "build": "echo 'Source-only package — no build step'",
     "lint": "eslint src/",
     "type-check": "tsc --noEmit",
     "clean": "rimraf dist"

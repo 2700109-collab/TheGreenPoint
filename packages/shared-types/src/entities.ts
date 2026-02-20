@@ -33,10 +33,10 @@ export interface Tenant extends BaseEntity {
   name: string;
   tradingName: string;
   registrationNumber: string; // CIPC registration
-  taxNumber: string; // SARS tax number
-  bbbeeLevel: number; // B-BBEE level (1-8)
+  taxNumber: string | null; // SARS tax number
+  bbbeeLevel: number | null; // B-BBEE level (1-8)
   contactEmail: string;
-  contactPhone: string;
+  contactPhone: string | null;
   province: Province;
   address: string;
   complianceStatus: ComplianceStatus;
@@ -45,7 +45,7 @@ export interface Tenant extends BaseEntity {
 
 /** User within the system */
 export interface User extends BaseEntity {
-  cognitoId: string;
+  cognitoId: string | null;
   email: string;
   firstName: string;
   lastName: string;
@@ -74,7 +74,7 @@ export interface Facility extends TenantScopedEntity {
   province: Province;
   address: string;
   /** GeoJSON Polygon for facility boundary */
-  boundary: GeoJSON.Polygon | null;
+  boundary: GeoJsonPolygon | null;
   /** GPS coordinates (centroid) */
   latitude: number;
   longitude: number;
@@ -85,8 +85,6 @@ export interface Facility extends TenantScopedEntity {
 export interface Zone extends TenantScopedEntity {
   facilityId: string;
   name: string;
-  /** GeoJSON Polygon for zone boundary */
-  boundary: GeoJSON.Polygon | null;
   capacity: number; // max plants
   currentCount: number;
   isActive: boolean;
@@ -96,9 +94,9 @@ export interface Zone extends TenantScopedEntity {
 export interface Strain extends BaseEntity {
   name: string;
   type: 'sativa' | 'indica' | 'hybrid' | 'ruderalis';
-  thcRange: string; // e.g., "15-22%"
-  cbdRange: string; // e.g., "0.5-1.2%"
-  floweringWeeks: number;
+  thcRange: string | null; // e.g., "15-22%"
+  cbdRange: string | null; // e.g., "0.5-1.2%"
+  floweringWeeks: number | null;
   description: string | null;
 }
 
@@ -145,7 +143,6 @@ export interface Harvest extends TenantScopedEntity {
 
 /** Certificate of Analysis (lab test results) */
 export interface LabResult extends TenantScopedEntity {
-  batchId: string;
   labName: string;
   labAccreditationNumber: string;
   testDate: string;
@@ -226,10 +223,8 @@ export interface AuditEvent {
   createdAt: string;
 }
 
-// GeoJSON type stubs (minimal)
-declare namespace GeoJSON {
-  interface Polygon {
-    type: 'Polygon';
-    coordinates: number[][][];
-  }
+// GeoJSON type for facility boundaries
+export interface GeoJsonPolygon {
+  type: 'Polygon';
+  coordinates: number[][][];
 }

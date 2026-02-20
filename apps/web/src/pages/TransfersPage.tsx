@@ -1,56 +1,83 @@
-import { Typography, Button, Table, Tag, Tabs } from 'antd';
+import { useState } from 'react';
+import { Typography, Button, Table, Tag, Tabs, Spin, Alert } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
+import { useTransfers } from '@ncts/api-client';
+import type { Transfer } from '@ncts/shared-types';
 
 const { Title } = Typography;
 
-const outgoing = [
-  { key: '1', transferNumber: 'TXF-2026-000045', receiver: 'Cape Cannabis Retail', items: 2, weight: '500g', date: '2026-02-18', status: 'pending' },
-  { key: '2', transferNumber: 'TXF-2026-000044', receiver: 'SA Cannabis Labs', items: 1, weight: '50g', date: '2026-02-16', status: 'accepted' },
-];
+const statusColors: Record<string, string> = {
+  pending: 'gold',
+  accepted: 'green',
+  rejected: 'red',
+  delivered: 'blue',
+  in_transit: 'cyan',
+};
 
-const incoming = [
-  { key: '1', transferNumber: 'TXF-2026-000043', sender: 'Premium Genetics SA', items: 3, weight: '1200g', date: '2026-02-15', status: 'delivered' },
-];
-
-const columns = (directionField: string) => [
-  { title: 'Transfer #', dataIndex: 'transferNumber', key: 'transferNumber', render: (t: string) => <span className="tracking-id">{t}</span> },
-  { title: directionField === 'receiver' ? 'Receiver' : 'Sender', dataIndex: directionField, key: directionField },
-  { title: 'Items', dataIndex: 'items', key: 'items' },
-  { title: 'Weight', dataIndex: 'weight', key: 'weight' },
-  { title: 'Date', dataIndex: 'date', key: 'date' },
+const columns = [
+  {
+    title: 'Transfer #',
+    dataIndex: 'transferNumber',
+    key: 'transferNumber',
+    render: (t: string) => <span style={{ fontFamily: 'monospace' }}>{t}</span>,
+  },
+  { title: 'Items', key: 'items', render: (_: unknown, r: Transfer) => r.items?.length ?? 0 },
+  {
+    title: 'Date',
+    dataIndex: 'initiatedAt',
+    key: 'initiatedAt',
+    render: (d: string) => new Date(d).toLocaleDateString('en-ZA'),
+  },
   {
     title: 'Status',
     dataIndex: 'status',
     key: 'status',
-    render: (s: string) => {
-      const colors: Record<string, string> = { pending: 'gold', accepted: 'green', rejected: 'red', delivered: 'blue', in_transit: 'cyan' };
-      return <Tag color={colors[s] || 'default'}>{s.toUpperCase()}</Tag>;
-    },
+    render: (s: string) => <Tag color={statusColors[s] || 'default'}>{s.toUpperCase()}</Tag>,
+  },
+  {
+    title: 'Vehicle',
+    dataIndex: 'vehicleRegistration',
+    key: 'vehicleRegistration',
+    render: (v: string | null) => v || '—',
   },
 ];
 
 export default function TransfersPage() {
+  const [page, setPage] = useState(1);
+  const { data, isLoading, error } = useTransfers({ page, limit: 20 });
+
+  if (error) return <Alert type="error" message="Failed to load transfers" showIcon />;
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
         <Title level={3} style={{ marginBottom: 0 }}>Transfers</Title>
         <Button type="primary" icon={<PlusOutlined />}>Initiate Transfer</Button>
       </div>
-      <Tabs
-        defaultActiveKey="outgoing"
-        items={[
-          {
-            key: 'outgoing',
-            label: 'Outgoing',
-            children: <Table columns={columns('receiver')} dataSource={outgoing} />,
-          },
-          {
-            key: 'incoming',
-            label: 'Incoming',
-            children: <Table columns={columns('sender')} dataSource={incoming} />,
-          },
-        ]}
-      />
+      <Spin spinning={isLoading}>
+        <Tabs
+          defaultActiveKey="all"
+          items={[
+            {
+              key: 'all',
+              label: 'All Transfers',
+              children: (
+                <Table<Transfer>
+                  columns={columns}
+                  dataSource={data?.data}
+                  rowKey="id"
+                  pagination={{
+                    current: data?.meta?.page ?? 1,
+                    pageSize: data?.meta?.limit ?? 20,
+                    total: data?.meta?.total ?? 0,
+                    onChange: (p) => setPage(p),
+                  }}
+                />
+              ),
+            },
+          ]}
+        />
+      </Spin>
     </div>
   );
 }

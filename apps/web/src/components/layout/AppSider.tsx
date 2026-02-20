@@ -5,6 +5,8 @@ import {
   ExperimentOutlined,
   SwapOutlined,
   BarChartOutlined,
+  DollarOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -35,6 +37,16 @@ const menuItems = [
     key: '/transfers',
     icon: <SwapOutlined />,
     label: 'Transfers',
+  },
+  {
+    key: '/sales',
+    icon: <DollarOutlined />,
+    label: 'Sales',
+  },
+  {
+    key: '/lab-results',
+    icon: <SafetyCertificateOutlined />,
+    label: 'Lab Results',
   },
 ];
 

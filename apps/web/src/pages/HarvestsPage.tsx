@@ -1,37 +1,73 @@
-import { Typography, Button, Table, Tag } from 'antd';
+import { useState } from 'react';
+import { Typography, Button, Table, Tag, Spin, Alert } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
+import { useBatches } from '@ncts/api-client';
+import type { Batch } from '@ncts/shared-types';
 
 const { Title } = Typography;
 
-const harvests = [
-  { key: '1', batchNumber: 'BATCH-2026-000089', facility: 'GreenFields Farm', plants: 50, wetWeight: '12500g', dryWeight: '3200g', date: '2026-02-19', status: 'complete' },
-  { key: '2', batchNumber: 'BATCH-2026-000088', facility: 'GreenFields Farm', plants: 30, wetWeight: '8000g', dryWeight: '2100g', date: '2026-02-15', status: 'complete' },
-  { key: '3', batchNumber: 'BATCH-2026-000087', facility: 'GreenFields Farm', plants: 25, wetWeight: '6500g', dryWeight: null, date: '2026-02-10', status: 'drying' },
-];
-
 const columns = [
-  { title: 'Batch #', dataIndex: 'batchNumber', key: 'batchNumber', render: (t: string) => <span className="batch-number">{t}</span> },
-  { title: 'Facility', dataIndex: 'facility', key: 'facility' },
-  { title: 'Plants', dataIndex: 'plants', key: 'plants' },
-  { title: 'Wet Weight', dataIndex: 'wetWeight', key: 'wetWeight' },
-  { title: 'Dry Weight', dataIndex: 'dryWeight', key: 'dryWeight', render: (t: string | null) => t || '—' },
-  { title: 'Date', dataIndex: 'date', key: 'date' },
   {
-    title: 'Status',
-    dataIndex: 'status',
-    key: 'status',
-    render: (s: string) => <Tag color={s === 'complete' ? 'green' : 'blue'}>{s.toUpperCase()}</Tag>,
+    title: 'Batch #',
+    dataIndex: 'batchNumber',
+    key: 'batchNumber',
+    render: (t: string) => <span style={{ fontFamily: 'monospace' }}>{t}</span>,
+  },
+  { title: 'Type', dataIndex: 'batchType', key: 'batchType', render: (t: string) => t.charAt(0).toUpperCase() + t.slice(1) },
+  { title: 'Plants', dataIndex: 'plantCount', key: 'plantCount' },
+  {
+    title: 'Wet Weight',
+    dataIndex: 'wetWeightGrams',
+    key: 'wetWeightGrams',
+    render: (w: number | null) => (w ? `${w.toLocaleString()}g` : '—'),
+  },
+  {
+    title: 'Dry Weight',
+    dataIndex: 'dryWeightGrams',
+    key: 'dryWeightGrams',
+    render: (w: number | null) => (w ? `${w.toLocaleString()}g` : '—'),
+  },
+  {
+    title: 'Date',
+    dataIndex: 'createdDate',
+    key: 'createdDate',
+    render: (d: string) => new Date(d).toLocaleDateString('en-ZA'),
+  },
+  {
+    title: 'Lab Result',
+    dataIndex: 'labResultId',
+    key: 'labResultId',
+    render: (id: string | null) => (
+      <Tag color={id ? 'green' : 'default'}>{id ? 'TESTED' : 'PENDING'}</Tag>
+    ),
   },
 ];
 
 export default function HarvestsPage() {
+  const [page, setPage] = useState(1);
+  const { data, isLoading, error } = useBatches({ page, limit: 20 });
+
+  if (error) return <Alert type="error" message="Failed to load batches" showIcon />;
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
-        <Title level={3} style={{ marginBottom: 0 }}>Harvests</Title>
+        <Title level={3} style={{ marginBottom: 0 }}>Harvests &amp; Batches</Title>
         <Button type="primary" icon={<PlusOutlined />}>Record Harvest</Button>
       </div>
-      <Table columns={columns} dataSource={harvests} />
+      <Spin spinning={isLoading}>
+        <Table<Batch>
+          columns={columns}
+          dataSource={data?.data}
+          rowKey="id"
+          pagination={{
+            current: data?.meta?.page ?? 1,
+            pageSize: data?.meta?.limit ?? 20,
+            total: data?.meta?.total ?? 0,
+            onChange: (p) => setPage(p),
+          }}
+        />
+      </Spin>
     </div>
   );
 }

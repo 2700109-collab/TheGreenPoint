@@ -1,6 +1,19 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  ParseUUIDPipe,
+  DefaultValuePipe,
+  ParseIntPipe,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { LabResultsService } from './lab-results.service';
+import { JwtAuthGuard, RolesGuard, TenantGuard, Roles, CurrentUser, TenantId } from '../auth';
+import type { AuthenticatedUser } from '../auth';
 
 @ApiTags('lab-results')
 @ApiBearerAuth()
@@ -9,14 +22,48 @@ export class LabResultsController {
   constructor(private readonly labResultsService: LabResultsService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard, TenantGuard)
+  @Roles('lab_technician', 'operator_admin')
   @ApiOperation({ summary: 'Submit Certificate of Analysis (CoA)' })
-  create(@Body() dto: any) {
-    return this.labResultsService.create(dto);
+  create(@TenantId() tenantId: string, @Body() dto: any): Promise<any> {
+    return this.labResultsService.create(tenantId, dto);
+  }
+
+  @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('operator_admin', 'operator_staff', 'lab_technician', 'regulator', 'inspector')
+  @ApiOperation({ summary: 'List lab results' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  findAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ) {
+    return this.labResultsService.findAll(user.tenantId!, page, limit);
+  }
+
+  @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('operator_admin', 'operator_staff', 'lab_technician', 'regulator', 'inspector')
+  @ApiOperation({ summary: 'Get lab result by ID' })
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<any> {
+    const tenantId = ['regulator', 'inspector'].includes(user.role) ? undefined : user.tenantId;
+    return this.labResultsService.findOne(id, tenantId);
   }
 
   @Get('batch/:batchId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('operator_admin', 'operator_staff', 'lab_technician', 'regulator', 'inspector')
   @ApiOperation({ summary: 'Get lab results for a batch' })
-  findByBatch(@Param('batchId') batchId: string) {
-    return this.labResultsService.findByBatch(batchId);
+  findByBatch(
+    @Param('batchId', ParseUUIDPipe) batchId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<any> {
+    const tenantId = ['regulator', 'inspector'].includes(user.role) ? undefined : user.tenantId;
+    return this.labResultsService.findByBatch(batchId, tenantId);
   }
 }

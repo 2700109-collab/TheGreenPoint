@@ -1,89 +1,98 @@
 import { useParams } from 'react-router-dom';
+import { useVerifyProduct } from '@ncts/api-client';
 
 export default function VerifyPage() {
   const { trackingId } = useParams<{ trackingId: string }>();
+  const { data, isLoading, error } = useVerifyProduct(trackingId ?? '');
 
-  // TODO: Phase 4 — replace with real API call via TanStack Query
-  const mockData = {
-    trackingId: trackingId || 'NCTS-ZA-2026-000001',
-    productName: 'Durban Poison Flower — 3.5g',
-    strain: 'Durban Poison',
-    operatorName: 'GreenFields Cultivation (Pty) Ltd',
-    batchNumber: 'BATCH-2026-000089',
-    labResult: {
-      status: 'pass' as const,
-      thcPercent: 18.5,
-      cbdPercent: 0.8,
-      testDate: '2026-02-15',
-      labName: 'SA Cannabis Testing Laboratory',
-    },
-    chainOfCustody: [
-      { from: 'GreenFields Cultivation', to: 'SA Cannabis Labs', date: '2026-02-10' },
-      { from: 'SA Cannabis Labs', to: 'GreenFields Cultivation', date: '2026-02-15' },
-      { from: 'GreenFields Cultivation', to: 'Cape Cannabis Dispensary', date: '2026-02-18' },
-    ],
-    verifiedAt: new Date().toISOString(),
-  };
+  if (isLoading) {
+    return (
+      <div className="verify-card" style={{ textAlign: 'center', padding: 48 }}>
+        <p style={{ fontSize: 18 }}>Verifying product...</p>
+        <p style={{ color: '#64748b', marginTop: 8 }}>Checking {trackingId}</p>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="verify-card" style={{ textAlign: 'center', padding: 48 }}>
+        <div className="verify-status fail">Product Not Found</div>
+        <p style={{ marginTop: 16, color: '#64748b' }}>
+          Tracking ID <strong className="tracking-id">{trackingId}</strong> was not found in the NCTS database.
+          This product may be unlicensed or counterfeit.
+        </p>
+      </div>
+    );
+  }
+
+  const labStatus = data.labResult?.status ?? 'unknown';
 
   return (
     <div>
       <div className="verify-card">
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div className={`verify-status ${mockData.labResult.status}`}>
-            ✅ Verified — {mockData.labResult.status === 'pass' ? 'Lab Tested & Passed' : 'FAILED'}
+          <div className={`verify-status ${labStatus === 'pass' ? 'pass' : 'fail'}`}>
+            {labStatus === 'pass' ? '✅ Verified — Lab Tested & Passed' : '⚠️ Verification Issue'}
           </div>
         </div>
 
         <div className="info-grid">
           <div className="info-item">
             <div className="info-label">Tracking ID</div>
-            <div className="info-value tracking-id">{mockData.trackingId}</div>
+            <div className="info-value tracking-id">{data.trackingId}</div>
           </div>
           <div className="info-item">
             <div className="info-label">Product</div>
-            <div className="info-value">{mockData.productName}</div>
+            <div className="info-value">{data.productName}</div>
           </div>
           <div className="info-item">
             <div className="info-label">Strain</div>
-            <div className="info-value">{mockData.strain}</div>
+            <div className="info-value">{data.strain}</div>
           </div>
           <div className="info-item">
             <div className="info-label">Licensed Operator</div>
-            <div className="info-value">{mockData.operatorName}</div>
+            <div className="info-value">{data.operatorName}</div>
           </div>
           <div className="info-item">
             <div className="info-label">Batch Number</div>
-            <div className="info-value tracking-id">{mockData.batchNumber}</div>
+            <div className="info-value tracking-id">{data.batchNumber}</div>
           </div>
-          <div className="info-item">
-            <div className="info-label">Lab</div>
-            <div className="info-value">{mockData.labResult.labName}</div>
-          </div>
-          <div className="info-item">
-            <div className="info-label">THC</div>
-            <div className="info-value">{mockData.labResult.thcPercent}%</div>
-          </div>
-          <div className="info-item">
-            <div className="info-label">CBD</div>
-            <div className="info-value">{mockData.labResult.cbdPercent}%</div>
-          </div>
+          {data.labResult && (
+            <>
+              <div className="info-item">
+                <div className="info-label">Lab</div>
+                <div className="info-value">{data.labResult.labName}</div>
+              </div>
+              <div className="info-item">
+                <div className="info-label">THC</div>
+                <div className="info-value">{data.labResult.thcPercent}%</div>
+              </div>
+              <div className="info-item">
+                <div className="info-label">CBD</div>
+                <div className="info-value">{data.labResult.cbdPercent}%</div>
+              </div>
+            </>
+          )}
         </div>
 
-        <div className="chain-of-custody">
-          <h3 style={{ marginBottom: 12, fontSize: 16 }}>Chain of Custody</h3>
-          {mockData.chainOfCustody.map((step, i) => (
-            <div key={i} className="custody-step">
-              <span>{step.from}</span>
-              <span className="custody-arrow">→</span>
-              <span>{step.to}</span>
-              <span className="custody-date">{step.date}</span>
-            </div>
-          ))}
-        </div>
+        {data.chainOfCustody.length > 0 && (
+          <div className="chain-of-custody">
+            <h3 style={{ marginBottom: 12, fontSize: 16 }}>Chain of Custody</h3>
+            {data.chainOfCustody.map((step, i) => (
+              <div key={i} className="custody-step">
+                <span>{step.from}</span>
+                <span className="custody-arrow">→</span>
+                <span>{step.to}</span>
+                <span className="custody-date">{step.date}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <p style={{ textAlign: 'center', marginTop: 16, fontSize: 12, color: '#94a3b8' }}>
-        Verified at {new Date(mockData.verifiedAt).toLocaleString()} — NCTS Republic of South Africa
+        Verified at {new Date(data.verifiedAt).toLocaleString()} — NCTS Republic of South Africa
       </p>
     </div>
   );

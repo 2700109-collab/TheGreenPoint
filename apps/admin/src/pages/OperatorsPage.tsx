@@ -1,25 +1,21 @@
-import { Typography, Table, Tag, Input } from 'antd';
+import { useState } from 'react';
+import { Typography, Table, Tag, Input, Spin, Alert } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
+import { useOperators } from '@ncts/api-client';
+import type { Tenant } from '@ncts/shared-types';
 
 const { Title } = Typography;
 
-const operators = [
-  { key: '1', name: 'GreenFields Cultivation (Pty) Ltd', province: 'WC', permits: 2, plants: 1247, compliance: 'compliant' },
-  { key: '2', name: 'Hemp SA Holdings', province: 'GP', permits: 1, plants: 3200, compliance: 'compliant' },
-  { key: '3', name: 'Green Valley Holdings', province: 'LP', permits: 1, plants: 450, compliance: 'non_compliant' },
-  { key: '4', name: 'Cape Cannabis Co.', province: 'WC', permits: 3, plants: 1800, compliance: 'warning' },
-  { key: '5', name: 'KZN Botanicals', province: 'KZN', permits: 2, plants: 2100, compliance: 'compliant' },
-];
-
 const columns = [
   { title: 'Operator', dataIndex: 'name', key: 'name' },
+  { title: 'Trading Name', dataIndex: 'tradingName', key: 'tradingName' },
   { title: 'Province', dataIndex: 'province', key: 'province' },
-  { title: 'Permits', dataIndex: 'permits', key: 'permits' },
-  { title: 'Plants', dataIndex: 'plants', key: 'plants' },
+  { title: 'B-BBEE Level', dataIndex: 'bbbeeLevel', key: 'bbbeeLevel', render: (l: number | null) => l ?? '—' },
+  { title: 'Contact', dataIndex: 'contactEmail', key: 'contactEmail' },
   {
     title: 'Compliance',
-    dataIndex: 'compliance',
-    key: 'compliance',
+    dataIndex: 'complianceStatus',
+    key: 'complianceStatus',
     render: (c: string) => {
       const map: Record<string, { color: string; label: string }> = {
         compliant: { color: 'green', label: 'COMPLIANT' },
@@ -33,6 +29,18 @@ const columns = [
 ];
 
 export default function OperatorsPage() {
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const { data, isLoading, error } = useOperators({ page, limit: 20 });
+
+  const filtered = data?.data?.filter((op) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return op.name.toLowerCase().includes(q) || op.tradingName?.toLowerCase().includes(q);
+  });
+
+  if (error) return <Alert type="error" message="Failed to load operators" showIcon />;
+
   return (
     <div>
       <Title level={3} style={{ marginBottom: 16 }}>Operators</Title>
@@ -40,8 +48,22 @@ export default function OperatorsPage() {
         placeholder="Search operators..."
         prefix={<SearchOutlined />}
         style={{ width: 300, marginBottom: 16 }}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
       />
-      <Table columns={columns} dataSource={operators} />
+      <Spin spinning={isLoading}>
+        <Table<Tenant>
+          columns={columns}
+          dataSource={filtered}
+          rowKey="id"
+          pagination={{
+            current: data?.meta?.page ?? 1,
+            pageSize: data?.meta?.limit ?? 20,
+            total: data?.meta?.total ?? 0,
+            onChange: (p) => setPage(p),
+          }}
+        />
+      </Spin>
     </div>
   );
 }

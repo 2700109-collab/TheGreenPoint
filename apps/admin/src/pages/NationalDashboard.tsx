@@ -1,4 +1,4 @@
-import { Card, Col, Row, Statistic, Typography, Alert, Table, Tag } from 'antd';
+import { Card, Col, Row, Statistic, Typography, Alert, Table, Spin } from 'antd';
 import {
   TeamOutlined,
   ExperimentOutlined,
@@ -7,42 +7,40 @@ import {
   WarningOutlined,
   CheckCircleOutlined,
 } from '@ant-design/icons';
+import { useRegulatoryDashboard } from '@ncts/api-client';
 
 const { Title, Paragraph } = Typography;
 
-const kpis = [
-  { title: 'Licensed Operators', value: 142, icon: <TeamOutlined />, color: '#1B3A5C' },
-  { title: 'Total Plants', value: 48_392, icon: <ExperimentOutlined />, color: '#007A4D' },
-  { title: 'Active Facilities', value: 215, icon: <EnvironmentOutlined />, color: '#1890FF' },
-  { title: 'Active Permits', value: 198, icon: <SafetyCertificateOutlined />, color: '#722ed1' },
-  { title: 'Compliance Rate', value: '94.2%', icon: <CheckCircleOutlined />, color: '#52C41A' },
-  { title: 'Flagged Operators', value: 8, icon: <WarningOutlined />, color: '#FF4D4F' },
-];
-
-const flagged = [
-  { key: '1', operator: 'Green Valley Holdings', issue: 'Expired permit', severity: 'high', since: '2026-02-10' },
-  { key: '2', operator: 'Cape Cannabis Co.', issue: 'Inventory discrepancy', severity: 'medium', since: '2026-02-15' },
-  { key: '3', operator: 'Limpopo Growers', issue: 'Missing lab results', severity: 'low', since: '2026-02-18' },
-];
-
 const flagColumns = [
-  { title: 'Operator', dataIndex: 'operator', key: 'operator' },
-  { title: 'Issue', dataIndex: 'issue', key: 'issue' },
+  { title: 'Type', dataIndex: 'type', key: 'type' },
+  { title: 'Description', dataIndex: 'description', key: 'description' },
+  { title: 'Operator', dataIndex: 'operatorName', key: 'operatorName' },
   {
-    title: 'Severity',
-    dataIndex: 'severity',
-    key: 'severity',
-    render: (s: string) => {
-      const colors: Record<string, string> = { high: 'red', medium: 'orange', low: 'gold' };
-      return <Tag color={colors[s]}>{s.toUpperCase()}</Tag>;
-    },
+    title: 'Time',
+    dataIndex: 'timestamp',
+    key: 'timestamp',
+    render: (t: string) => new Date(t).toLocaleDateString('en-ZA'),
   },
-  { title: 'Since', dataIndex: 'since', key: 'since' },
 ];
 
 export default function NationalDashboard() {
+  const { data, isLoading, error } = useRegulatoryDashboard();
+
+  if (error) {
+    return <Alert type="error" message="Failed to load dashboard. Is the API running?" showIcon />;
+  }
+
+  const kpis = [
+    { title: 'Licensed Operators', value: data?.totalOperators ?? 0, icon: <TeamOutlined />, color: '#1B3A5C' },
+    { title: 'Total Plants', value: data?.totalPlants ?? 0, icon: <ExperimentOutlined />, color: '#007A4D' },
+    { title: 'Active Facilities', value: data?.totalFacilities ?? 0, icon: <EnvironmentOutlined />, color: '#1890FF' },
+    { title: 'Active Permits', value: data?.activePermits ?? 0, icon: <SafetyCertificateOutlined />, color: '#722ed1' },
+    { title: 'Compliance Rate', value: data ? `${data.complianceRate.toFixed(1)}%` : '—', icon: <CheckCircleOutlined />, color: '#52C41A' },
+    { title: 'Flagged Operators', value: data?.flaggedOperators ?? 0, icon: <WarningOutlined />, color: '#FF4D4F' },
+  ];
+
   return (
-    <div>
+    <Spin spinning={isLoading}>
       <Title level={3}>National Overview</Title>
       <Paragraph type="secondary" style={{ marginBottom: 24 }}>
         Real-time cannabis industry monitoring across South Africa
@@ -71,9 +69,14 @@ export default function NationalDashboard() {
         ))}
       </Row>
 
-      <Card title="Flagged Operators" style={{ marginTop: 24 }}>
-        <Table columns={flagColumns} dataSource={flagged} pagination={false} size="small" />
+      <Card title="Recent Activity" style={{ marginTop: 24 }}>
+        <Table
+          columns={flagColumns}
+          dataSource={(data?.recentActivity ?? []).map((a) => ({ ...a, key: a.id }))}
+          pagination={false}
+          size="small"
+        />
       </Card>
-    </div>
+    </Spin>
   );
 }

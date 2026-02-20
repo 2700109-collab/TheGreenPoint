@@ -3,6 +3,8 @@ import {
   DashboardOutlined,
   TeamOutlined,
   SafetyCertificateOutlined,
+  WarningOutlined,
+  EnvironmentOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -12,6 +14,8 @@ const menuItems = [
   { key: '/', icon: <DashboardOutlined />, label: 'National Dashboard' },
   { key: '/operators', icon: <TeamOutlined />, label: 'Operators' },
   { key: '/permits', icon: <SafetyCertificateOutlined />, label: 'Permits' },
+  { key: '/compliance', icon: <WarningOutlined />, label: 'Compliance' },
+  { key: '/facilities-map', icon: <EnvironmentOutlined />, label: 'Facilities Map' },
 ];
 
 export default function AdminSider() {

@@ -7,6 +7,8 @@ import FacilitiesPage from './pages/FacilitiesPage';
 import PlantsPage from './pages/PlantsPage';
 import HarvestsPage from './pages/HarvestsPage';
 import TransfersPage from './pages/TransfersPage';
+import SalesPage from './pages/SalesPage';
+import LabResultsPage from './pages/LabResultsPage';
 
 const { Content } = Layout;
 
@@ -23,6 +25,8 @@ function App() {
             <Route path="/plants" element={<PlantsPage />} />
             <Route path="/harvests" element={<HarvestsPage />} />
             <Route path="/transfers" element={<TransfersPage />} />
+            <Route path="/sales" element={<SalesPage />} />
+            <Route path="/lab-results" element={<LabResultsPage />} />
           </Routes>
         </Content>
       </Layout>

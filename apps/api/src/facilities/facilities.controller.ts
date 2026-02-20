@@ -1,6 +1,20 @@
-import { Controller, Get, Post, Body, Param, Patch } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  Query,
+  UseGuards,
+  ParseUUIDPipe,
+  DefaultValuePipe,
+  ParseIntPipe,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { FacilitiesService } from './facilities.service';
+import { JwtAuthGuard, TenantGuard, RolesGuard, Roles, CurrentUser, TenantId } from '../auth';
+import type { AuthenticatedUser } from '../auth';
 
 @ApiTags('facilities')
 @ApiBearerAuth()
@@ -9,26 +23,79 @@ export class FacilitiesController {
   constructor(private readonly facilitiesService: FacilitiesService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard, TenantGuard)
+  @Roles('operator_admin')
   @ApiOperation({ summary: 'Register a new facility' })
-  create(@Body() dto: any) {
-    return this.facilitiesService.create(dto);
+  create(@TenantId() tenantId: string, @Body() dto: any): Promise<any> {
+    return this.facilitiesService.create(tenantId, dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List facilities for current tenant' })
-  findAll() {
-    return this.facilitiesService.findAll();
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('operator_admin', 'operator_staff', 'regulator', 'inspector')
+  @ApiOperation({ summary: 'List facilities' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  findAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ) {
+    if (['regulator', 'inspector', 'admin'].includes(user.role)) {
+      return this.facilitiesService.findAllForRegulator(page, limit);
+    }
+    return this.facilitiesService.findAll(user.tenantId!, page, limit);
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('operator_admin', 'operator_staff', 'regulator', 'inspector')
   @ApiOperation({ summary: 'Get facility by ID' })
-  findOne(@Param('id') id: string) {
-    return this.facilitiesService.findOne(id);
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<any> {
+    const tenantId = ['regulator', 'inspector', 'admin'].includes(user.role)
+      ? undefined
+      : user.tenantId;
+    return this.facilitiesService.findOne(id, tenantId);
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard, TenantGuard)
+  @Roles('operator_admin')
   @ApiOperation({ summary: 'Update facility' })
-  update(@Param('id') id: string, @Body() dto: any) {
-    return this.facilitiesService.update(id, dto);
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @TenantId() tenantId: string,
+    @Body() dto: any,
+  ): Promise<any> {
+    return this.facilitiesService.update(id, tenantId, dto);
+  }
+
+  @Post(':id/zones')
+  @UseGuards(JwtAuthGuard, RolesGuard, TenantGuard)
+  @Roles('operator_admin')
+  @ApiOperation({ summary: 'Create a zone within a facility' })
+  createZone(
+    @Param('id', ParseUUIDPipe) facilityId: string,
+    @TenantId() tenantId: string,
+    @Body() dto: { name: string; capacity: number },
+  ) {
+    return this.facilitiesService.createZone(facilityId, tenantId, dto);
+  }
+
+  @Get(':id/zones')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('operator_admin', 'operator_staff', 'regulator', 'inspector')
+  @ApiOperation({ summary: 'List zones in a facility' })
+  getZones(
+    @Param('id', ParseUUIDPipe) facilityId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = ['regulator', 'inspector', 'admin'].includes(user.role)
+      ? undefined
+      : user.tenantId;
+    return this.facilitiesService.getZones(facilityId, tenantId);
   }
 }

@@ -1,35 +1,21 @@
-import { Card, Col, Row, Statistic, Typography, Table, Tag } from 'antd';
+import { Card, Col, Row, Statistic, Typography, Table, Tag, Spin, Alert } from 'antd';
 import {
   ExperimentOutlined,
   EnvironmentOutlined,
   SwapOutlined,
   CheckCircleOutlined,
 } from '@ant-design/icons';
+import { useFacilities, usePlants, useTransfers } from '@ncts/api-client';
 
 const { Title } = Typography;
 
-/** Placeholder data — will be replaced with API calls in Phase 2 */
-const stats = [
-  { title: 'Active Plants', value: 1247, icon: <ExperimentOutlined />, color: '#007A4D' },
-  { title: 'Facilities', value: 3, icon: <EnvironmentOutlined />, color: '#1B3A5C' },
-  { title: 'Pending Transfers', value: 5, icon: <SwapOutlined />, color: '#FFB81C' },
-  { title: 'Compliance', value: '98%', icon: <CheckCircleOutlined />, color: '#52C41A' },
-];
-
-const recentActivity = [
-  { key: '1', action: 'Plant Registered', item: 'NCTS-ZA-2026-001234', date: '2026-02-20', status: 'success' },
-  { key: '2', action: 'Harvest Created', item: 'BATCH-2026-000089', date: '2026-02-19', status: 'success' },
-  { key: '3', action: 'Transfer Sent', item: 'TXF-2026-000045', date: '2026-02-18', status: 'pending' },
-  { key: '4', action: 'Lab Result', item: 'BATCH-2026-000087', date: '2026-02-17', status: 'pass' },
-];
-
-const columns = [
+const activityColumns = [
   { title: 'Action', dataIndex: 'action', key: 'action' },
   {
     title: 'Item',
     dataIndex: 'item',
     key: 'item',
-    render: (text: string) => <span className="tracking-id">{text}</span>,
+    render: (text: string) => <span style={{ fontFamily: 'monospace' }}>{text}</span>,
   },
   { title: 'Date', dataIndex: 'date', key: 'date' },
   {
@@ -40,6 +26,8 @@ const columns = [
       const colorMap: Record<string, string> = {
         success: 'green',
         pending: 'gold',
+        accepted: 'green',
+        rejected: 'red',
         pass: 'cyan',
         fail: 'red',
       };
@@ -49,11 +37,39 @@ const columns = [
 ];
 
 export default function DashboardPage() {
+  const { data: plantsData, isLoading: plantsLoading, error: plantsError } = usePlants({ page: 1, limit: 1 });
+  const { data: facilitiesData, isLoading: facilitiesLoading, error: facilitiesError } = useFacilities({ page: 1, limit: 1 });
+  const { data: transfersData, isLoading: transfersLoading, error: transfersError } = useTransfers({ page: 1, limit: 5 });
+
+  const isLoading = plantsLoading || facilitiesLoading || transfersLoading;
+  const anyError = plantsError || facilitiesError || transfersError;
+
+  const totalPlants = plantsData?.meta?.total ?? 0;
+  const totalFacilities = facilitiesData?.meta?.total ?? 0;
+  const pendingTransfers = transfersData?.data?.filter((t) => t.status === 'pending').length ?? 0;
+
+  const stats = [
+    { title: 'Active Plants', value: totalPlants, icon: <ExperimentOutlined />, color: '#007A4D' },
+    { title: 'Facilities', value: totalFacilities, icon: <EnvironmentOutlined />, color: '#1B3A5C' },
+    { title: 'Pending Transfers', value: pendingTransfers, icon: <SwapOutlined />, color: '#FFB81C' },
+    { title: 'Compliance', value: '98%', icon: <CheckCircleOutlined />, color: '#52C41A' },
+  ];
+
+  const recentActivity = (transfersData?.data ?? []).slice(0, 4).map((t, i) => ({
+    key: String(i),
+    action: 'Transfer',
+    item: t.transferNumber,
+    date: new Date(t.initiatedAt).toLocaleDateString('en-ZA'),
+    status: t.status,
+  }));
+
+  if (anyError) {
+    return <Alert type="warning" message="Could not load dashboard data. Is the API running on port 3000?" showIcon />;
+  }
+
   return (
-    <div>
-      <Title level={3} style={{ marginBottom: 24 }}>
-        Dashboard
-      </Title>
+    <Spin spinning={isLoading}>
+      <Title level={3} style={{ marginBottom: 24 }}>Dashboard</Title>
       <Row gutter={[16, 16]}>
         {stats.map((stat) => (
           <Col xs={24} sm={12} lg={6} key={stat.title}>
@@ -69,8 +85,8 @@ export default function DashboardPage() {
         ))}
       </Row>
       <Card title="Recent Activity" style={{ marginTop: 24 }}>
-        <Table columns={columns} dataSource={recentActivity} pagination={false} size="small" />
+        <Table columns={activityColumns} dataSource={recentActivity} pagination={false} size="small" />
       </Card>
-    </div>
+    </Spin>
   );
 }

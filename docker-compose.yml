@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   # PostgreSQL 16 with PostGIS
   postgres:
@@ -34,14 +32,28 @@ services:
       timeout: 5s
       retries: 5
 
-  # Mailhog — email testing
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: ncts-mailhog
+  # Mailpit — email testing (replaces deprecated Mailhog)
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: ncts-mailpit
     ports:
       - "1025:1025"  # SMTP
       - "8025:8025"  # Web UI
 
+  # LocalStack — mock AWS services (S3, SES, EventBridge)
+  localstack:
+    image: localstack/localstack:3
+    container_name: ncts-localstack
+    environment:
+      SERVICES: s3,ses,events
+      DEFAULT_REGION: af-south-1
+      DEBUG: 0
+    ports:
+      - "4566:4566"    # LocalStack Gateway
+    volumes:
+      - localstack_data:/var/lib/localstack
+
 volumes:
   postgres_data:
   redis_data:
+  localstack_data:

@@ -5,6 +5,8 @@ import AdminHeader from './components/layout/AdminHeader';
 import NationalDashboard from './pages/NationalDashboard';
 import OperatorsPage from './pages/OperatorsPage';
 import PermitsPage from './pages/PermitsPage';
+import CompliancePage from './pages/CompliancePage';
+import FacilitiesMapPage from './pages/FacilitiesMapPage';
 
 const { Content } = Layout;
 
@@ -19,6 +21,8 @@ function App() {
             <Route path="/" element={<NationalDashboard />} />
             <Route path="/operators" element={<OperatorsPage />} />
             <Route path="/permits" element={<PermitsPage />} />
+            <Route path="/compliance" element={<CompliancePage />} />
+            <Route path="/facilities-map" element={<FacilitiesMapPage />} />
           </Routes>
         </Content>
       </Layout>

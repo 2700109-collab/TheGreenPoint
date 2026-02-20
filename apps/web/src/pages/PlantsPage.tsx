@@ -1,16 +1,10 @@
-import { Typography, Button, Table, Tag, Space, Select } from 'antd';
+import { useState } from 'react';
+import { Typography, Button, Table, Tag, Space, Select, Spin, Alert } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
+import { usePlants } from '@ncts/api-client';
+import type { Plant, PlantState } from '@ncts/shared-types';
 
 const { Title } = Typography;
-
-/** Placeholder data */
-const plants = [
-  { key: '1', trackingId: 'NCTS-ZA-2026-001234', strain: 'Durban Poison', zone: 'Zone A', state: 'flowering', plantedDate: '2026-01-15' },
-  { key: '2', trackingId: 'NCTS-ZA-2026-001235', strain: 'Swazi Gold', zone: 'Zone A', state: 'vegetative', plantedDate: '2026-01-20' },
-  { key: '3', trackingId: 'NCTS-ZA-2026-001236', strain: 'Malawi Gold', zone: 'Zone B', state: 'seedling', plantedDate: '2026-02-01' },
-  { key: '4', trackingId: 'NCTS-ZA-2026-001237', strain: 'Durban Poison', zone: 'Zone C', state: 'harvested', plantedDate: '2025-11-10' },
-  { key: '5', trackingId: 'NCTS-ZA-2026-001238', strain: 'Rooibaard', zone: 'Zone A', state: 'seed', plantedDate: '2026-02-18' },
-];
 
 const stateColors: Record<string, string> = {
   seed: 'default',
@@ -26,10 +20,10 @@ const columns = [
     title: 'Tracking ID',
     dataIndex: 'trackingId',
     key: 'trackingId',
-    render: (text: string) => <span className="tracking-id">{text}</span>,
+    render: (text: string) => <span style={{ fontFamily: 'monospace' }}>{text}</span>,
   },
-  { title: 'Strain', dataIndex: 'strain', key: 'strain' },
-  { title: 'Zone', dataIndex: 'zone', key: 'zone' },
+  { title: 'Strain', dataIndex: 'strainId', key: 'strainId', ellipsis: true },
+  { title: 'Zone', dataIndex: 'zoneId', key: 'zoneId', ellipsis: true },
   {
     title: 'State',
     dataIndex: 'state',
@@ -38,29 +32,58 @@ const columns = [
       <Tag color={stateColors[state] || 'default'}>{state.toUpperCase()}</Tag>
     ),
   },
-  { title: 'Planted', dataIndex: 'plantedDate', key: 'plantedDate' },
+  {
+    title: 'Planted',
+    dataIndex: 'plantedDate',
+    key: 'plantedDate',
+    render: (d: string) => new Date(d).toLocaleDateString('en-ZA'),
+  },
 ];
 
 export default function PlantsPage() {
+  const [page, setPage] = useState(1);
+  const [stateFilter, setStateFilter] = useState<PlantState | undefined>();
+
+  const { data, isLoading, error } = usePlants({
+    page,
+    limit: 20,
+    state: stateFilter,
+  });
+
+  if (error) return <Alert type="error" message="Failed to load plants" showIcon />;
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <Title level={3} style={{ marginBottom: 0 }}>
-          Plants
-        </Title>
+        <Title level={3} style={{ marginBottom: 0 }}>Plants</Title>
         <Space>
           <Select
             placeholder="Filter by state"
             allowClear
             style={{ width: 180 }}
-            options={Object.keys(stateColors).map((s) => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }))}
+            value={stateFilter}
+            onChange={(val) => { setStateFilter(val); setPage(1); }}
+            options={Object.keys(stateColors).map((s) => ({
+              value: s,
+              label: s.charAt(0).toUpperCase() + s.slice(1),
+            }))}
           />
-          <Button type="primary" icon={<PlusOutlined />}>
-            Register Plant
-          </Button>
+          <Button type="primary" icon={<PlusOutlined />}>Register Plant</Button>
         </Space>
       </div>
-      <Table columns={columns} dataSource={plants} />
+      <Spin spinning={isLoading}>
+        <Table<Plant>
+          columns={columns}
+          dataSource={data?.data}
+          rowKey="id"
+          pagination={{
+            current: data?.meta?.page ?? 1,
+            pageSize: data?.meta?.limit ?? 20,
+            total: data?.meta?.total ?? 0,
+            onChange: (p) => setPage(p),
+          }}
+        />
+      </Spin>
     </div>
   );
 }
