@@ -1,0 +1,27 @@
+{
+  "name": "@ncts/database",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "generate": "prisma generate",
+    "migrate:dev": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "migrate:reset": "prisma migrate reset",
+    "seed": "tsx src/seed.ts",
+    "studio": "prisma studio",
+    "type-check": "tsc --noEmit",
+    "clean": "rimraf dist generated"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.3.0"
+  },
+  "devDependencies": {
+    "@ncts/tsconfig": "workspace:*",
+    "@types/node": "^22.0.0",
+    "prisma": "^6.3.0",
+    "rimraf": "^6.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

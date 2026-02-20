@@ -1,0 +1,353 @@
+// Prisma Schema for NCTS — National Cannabis Tracking System
+// https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// Core entities
+// ============================================================================
+
+model Tenant {
+  id                 String           @id @default(uuid()) @db.Uuid
+  name               String
+  tradingName        String           @map("trading_name")
+  registrationNumber String           @unique @map("registration_number")
+  taxNumber          String?          @map("tax_number")
+  bbbeeLevel         Int?             @map("bbbee_level")
+  contactEmail       String           @map("contact_email")
+  contactPhone       String?          @map("contact_phone")
+  province           String
+  address            String
+  complianceStatus   String           @default("compliant") @map("compliance_status")
+  isActive           Boolean          @default(true) @map("is_active")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  users      User[]
+  permits    Permit[]
+  facilities Facility[]
+  plants     Plant[]
+  batches    Batch[]
+  harvests   Harvest[]
+  labResults LabResult[]
+  transfers  Transfer[]
+  sales      Sale[]
+
+  @@map("tenants")
+}
+
+model User {
+  id          String    @id @default(uuid()) @db.Uuid
+  cognitoId   String?   @unique @map("cognito_id")
+  email       String    @unique
+  firstName   String    @map("first_name")
+  lastName    String    @map("last_name")
+  role        String
+  tenantId    String?   @map("tenant_id") @db.Uuid
+  isActive    Boolean   @default(true) @map("is_active")
+  lastLoginAt DateTime? @map("last_login_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@map("users")
+}
+
+model Permit {
+  id               String   @id @default(uuid()) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  facilityId       String   @map("facility_id") @db.Uuid
+  permitType       String   @map("permit_type")
+  permitNumber     String   @unique @map("permit_number")
+  issuingAuthority String   @map("issuing_authority")
+  issueDate        DateTime @map("issue_date")
+  expiryDate       DateTime @map("expiry_date")
+  status           String   @default("pending")
+  conditions       String?
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  facility Facility @relation(fields: [facilityId], references: [id])
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("permits")
+}
+
+model Facility {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  name         String
+  facilityType String   @map("facility_type")
+  province     String
+  address      String
+  latitude     Float
+  longitude    Float
+  // boundary stored as PostGIS geometry via raw SQL
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  zones    Zone[]
+  plants   Plant[]
+  permits  Permit[]
+  harvests Harvest[]
+  sales    Sale[]
+
+  @@index([tenantId])
+  @@map("facilities")
+}
+
+model Zone {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  facilityId   String   @map("facility_id") @db.Uuid
+  name         String
+  capacity     Int      @default(0)
+  currentCount Int      @default(0) @map("current_count")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  facility Facility @relation(fields: [facilityId], references: [id])
+  plants   Plant[]
+
+  @@index([tenantId])
+  @@index([facilityId])
+  @@map("zones")
+}
+
+model Strain {
+  id            String  @id @default(uuid()) @db.Uuid
+  name          String  @unique
+  type          String  // sativa, indica, hybrid, ruderalis
+  thcRange      String? @map("thc_range")
+  cbdRange      String? @map("cbd_range")
+  floweringWeeks Int?   @map("flowering_weeks")
+  description   String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  plants  Plant[]
+  batches Batch[]
+
+  @@map("strains")
+}
+
+model Plant {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  trackingId      String    @unique @map("tracking_id")
+  strainId        String    @map("strain_id") @db.Uuid
+  facilityId      String    @map("facility_id") @db.Uuid
+  zoneId          String    @map("zone_id") @db.Uuid
+  state           String    @default("seed")
+  plantedDate     DateTime  @map("planted_date")
+  harvestedDate   DateTime? @map("harvested_date")
+  destroyedDate   DateTime? @map("destroyed_date")
+  destroyedReason String?   @map("destroyed_reason")
+  motherPlantId   String?   @map("mother_plant_id") @db.Uuid
+  batchId         String?   @map("batch_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  strain      Strain    @relation(fields: [strainId], references: [id])
+  facility    Facility  @relation(fields: [facilityId], references: [id])
+  zone        Zone      @relation(fields: [zoneId], references: [id])
+  motherPlant Plant?    @relation("PlantClones", fields: [motherPlantId], references: [id])
+  clones      Plant[]   @relation("PlantClones")
+  batch       Batch?    @relation(fields: [batchId], references: [id])
+
+  @@index([tenantId])
+  @@index([state])
+  @@index([facilityId])
+  @@index([trackingId])
+  @@map("plants")
+}
+
+model Batch {
+  id                   String    @id @default(uuid()) @db.Uuid
+  tenantId             String    @map("tenant_id") @db.Uuid
+  batchNumber          String    @unique @map("batch_number")
+  batchType            String    @map("batch_type")
+  strainId             String    @map("strain_id") @db.Uuid
+  facilityId           String    @map("facility_id") @db.Uuid
+  plantCount           Int       @map("plant_count")
+  wetWeightGrams       Float?    @map("wet_weight_grams")
+  dryWeightGrams       Float?    @map("dry_weight_grams")
+  processedWeightGrams Float?    @map("processed_weight_grams")
+  labResultId          String?   @map("lab_result_id") @db.Uuid
+  parentBatchId        String?   @map("parent_batch_id") @db.Uuid
+  createdDate          DateTime  @map("created_date")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  tenant      Tenant     @relation(fields: [tenantId], references: [id])
+  strain      Strain     @relation(fields: [strainId], references: [id])
+  plants      Plant[]
+  harvests    Harvest[]
+  labResult   LabResult? @relation(fields: [labResultId], references: [id])
+  parentBatch Batch?     @relation("BatchDerivation", fields: [parentBatchId], references: [id])
+  childBatches Batch[]   @relation("BatchDerivation")
+  transferItems TransferItem[]
+  sales       Sale[]
+
+  @@index([tenantId])
+  @@index([batchNumber])
+  @@map("batches")
+}
+
+model Harvest {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  batchId        String   @map("batch_id") @db.Uuid
+  facilityId     String   @map("facility_id") @db.Uuid
+  harvestDate    DateTime @map("harvest_date")
+  wetWeightGrams Float    @map("wet_weight_grams")
+  dryWeightGrams Float?   @map("dry_weight_grams")
+  plantIds       String[] @map("plant_ids") @db.Uuid
+  notes          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  batch    Batch    @relation(fields: [batchId], references: [id])
+  facility Facility @relation(fields: [facilityId], references: [id])
+
+  @@index([tenantId])
+  @@map("harvests")
+}
+
+model LabResult {
+  id                       String   @id @default(uuid()) @db.Uuid
+  tenantId                 String   @map("tenant_id") @db.Uuid
+  batchId                  String   @map("batch_id") @db.Uuid
+  labName                  String   @map("lab_name")
+  labAccreditationNumber   String   @map("lab_accreditation_number")
+  testDate                 DateTime @map("test_date")
+  status                   String   @default("pending")
+  thcPercent               Float    @map("thc_percent")
+  cbdPercent               Float    @map("cbd_percent")
+  cbnPercent               Float?   @map("cbn_percent")
+  cbgPercent               Float?   @map("cbg_percent")
+  totalCannabinoidsPercent Float    @map("total_cannabinoids_percent")
+  pesticidesPass           Boolean  @map("pesticides_pass")
+  heavyMetalsPass          Boolean  @map("heavy_metals_pass")
+  microbialsPass           Boolean  @map("microbials_pass")
+  mycotoxinsPass           Boolean  @map("mycotoxins_pass")
+  terpeneProfile           Json?    @map("terpene_profile")
+  moisturePercent          Float?   @map("moisture_percent")
+  certificateUrl           String?  @map("certificate_url")
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  batches Batch[]
+
+  @@index([tenantId])
+  @@index([batchId])
+  @@map("lab_results")
+}
+
+model Transfer {
+  id                   String    @id @default(uuid()) @db.Uuid
+  tenantId             String    @map("tenant_id") @db.Uuid
+  transferNumber       String    @unique @map("transfer_number")
+  senderTenantId       String    @map("sender_tenant_id") @db.Uuid
+  senderFacilityId     String    @map("sender_facility_id") @db.Uuid
+  receiverTenantId     String    @map("receiver_tenant_id") @db.Uuid
+  receiverFacilityId   String    @map("receiver_facility_id") @db.Uuid
+  status               String    @default("pending")
+  initiatedAt          DateTime  @map("initiated_at")
+  deliveredAt          DateTime? @map("delivered_at")
+  completedAt          DateTime? @map("completed_at")
+  vehicleRegistration  String?   @map("vehicle_registration")
+  driverName           String?   @map("driver_name")
+  driverIdNumber       String?   @map("driver_id_number")
+  notes                String?
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  tenant Tenant         @relation(fields: [tenantId], references: [id])
+  items  TransferItem[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("transfers")
+}
+
+model TransferItem {
+  id                    String @id @default(uuid()) @db.Uuid
+  transferId            String @map("transfer_id") @db.Uuid
+  batchId               String @map("batch_id") @db.Uuid
+  quantityGrams         Float  @map("quantity_grams")
+  receivedQuantityGrams Float? @map("received_quantity_grams")
+
+  transfer Transfer @relation(fields: [transferId], references: [id])
+  batch    Batch    @relation(fields: [batchId], references: [id])
+
+  @@index([transferId])
+  @@map("transfer_items")
+}
+
+model Sale {
+  id               String   @id @default(uuid()) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  saleNumber       String   @unique @map("sale_number")
+  batchId          String   @map("batch_id") @db.Uuid
+  facilityId       String   @map("facility_id") @db.Uuid
+  quantityGrams    Float    @map("quantity_grams")
+  priceZar         Float    @map("price_zar")
+  saleDate         DateTime @map("sale_date")
+  customerVerified Boolean  @default(false) @map("customer_verified")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  batch    Batch    @relation(fields: [batchId], references: [id])
+  facility Facility @relation(fields: [facilityId], references: [id])
+
+  @@index([tenantId])
+  @@map("sales")
+}
+
+// ============================================================================
+// Audit Trail (append-only, hash-chained)
+// ============================================================================
+
+model AuditEvent {
+  id             String   @id @default(uuid()) @db.Uuid
+  sequenceNumber Int      @unique @default(autoincrement()) @map("sequence_number")
+  entityType     String   @map("entity_type")
+  entityId       String   @map("entity_id")
+  action         String
+  actorId        String   @map("actor_id")
+  actorRole      String   @map("actor_role")
+  tenantId       String?  @map("tenant_id") @db.Uuid
+  payload        Json
+  previousHash   String   @map("previous_hash")
+  eventHash      String   @map("event_hash")
+  ipAddress      String?  @map("ip_address")
+  userAgent      String?  @map("user_agent")
+  gpsLatitude    Float?   @map("gps_latitude")
+  gpsLongitude   Float?   @map("gps_longitude")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([tenantId])
+  @@index([createdAt])
+  @@map("audit_events")
+}

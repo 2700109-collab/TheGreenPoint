@@ -1,0 +1,11 @@
+{
+  "name": "@ncts/tsconfig",
+  "version": "0.1.0",
+  "private": true,
+  "files": [
+    "base.json",
+    "nestjs.json",
+    "react-app.json",
+    "react-library.json"
+  ]
+}

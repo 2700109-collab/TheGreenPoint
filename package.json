@@ -1,0 +1,43 @@
+{
+  "name": "ncts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "National Cannabis Tracking System — Seed-to-Sale Digital Infrastructure for South Africa",
+  "author": "TheGreenPoint <info@thegreenpoint.co.za>",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "packageManager": "pnpm@10.30.1",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "clean": "turbo run clean && rimraf node_modules",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css,scss}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css,scss}\"",
+    "db:migrate": "pnpm --filter @ncts/database migrate:dev",
+    "db:seed": "pnpm --filter @ncts/database seed",
+    "db:studio": "pnpm --filter @ncts/database studio",
+    "prepare": "husky || true"
+  },
+  "devDependencies": {
+    "husky": "^9.1.0",
+    "turbo": "^2.5.0",
+    "rimraf": "^6.0.0",
+    "prettier": "^3.5.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "prisma",
+      "@prisma/client",
+      "@prisma/engines",
+      "@nestjs/core"
+    ]
+  }
+}
