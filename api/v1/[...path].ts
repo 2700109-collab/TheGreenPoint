@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from 'crypto';
+import path from 'path';
 
 // ============================================================================
 // Prisma singleton (warm between invocations) — lazy require to avoid TS error
@@ -8,9 +9,18 @@ const g = globalThis as unknown as { __prisma?: any };
 let prisma: any;
 function getPrisma() {
   if (!prisma) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { PrismaClient } = require('../../packages/database/generated/client');
-    prisma = g.__prisma ?? new PrismaClient();
+    try {
+      // Try custom output path first (used in Vercel serverless with includeFiles)
+      const clientPath = path.join(process.cwd(), 'packages', 'database', 'generated', 'client');
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { PrismaClient } = require(clientPath);
+      prisma = g.__prisma ?? new PrismaClient();
+    } catch {
+      // Fallback: try standard @prisma/client
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { PrismaClient } = require('@prisma/client');
+      prisma = g.__prisma ?? new PrismaClient();
+    }
     g.__prisma = prisma;
   }
   return prisma;
@@ -460,14 +470,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // Ensure the Prisma singleton is initialised before any handler runs
-  getPrisma();
-
   const pathArr = req.query.path;
   const seg: string[] = Array.isArray(pathArr) ? pathArr : pathArr ? [pathArr] : [];
   const resource = seg[0];
 
   try {
+    // Ensure the Prisma singleton is initialised before any handler runs
+    getPrisma();
+
     switch (resource) {
       case 'auth': return await handleAuth(req, res, seg);
       case 'facilities': return await handleFacilities(req, res, seg);
