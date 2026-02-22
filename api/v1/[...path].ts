@@ -9,7 +9,7 @@ let prisma: any;
 function getPrisma() {
   if (!prisma) {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { PrismaClient } = require('@prisma/client');
+    const { PrismaClient } = require('../../packages/database/generated/client');
     prisma = g.__prisma ?? new PrismaClient();
     g.__prisma = prisma;
   }
