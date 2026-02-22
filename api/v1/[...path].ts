@@ -1,6 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from 'crypto';
 import path from 'path';
+import { createRequire } from 'module';
+
+const _require = createRequire(import.meta.url);
 
 // ============================================================================
 // Prisma singleton (warm between invocations) — lazy require to avoid TS error
@@ -12,13 +15,11 @@ function getPrisma() {
     try {
       // Try custom output path first (used in Vercel serverless with includeFiles)
       const clientPath = path.join(process.cwd(), 'packages', 'database', 'generated', 'client');
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { PrismaClient } = require(clientPath);
+      const { PrismaClient } = _require(clientPath);
       prisma = g.__prisma ?? new PrismaClient();
     } catch {
       // Fallback: try standard @prisma/client
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { PrismaClient } = require('@prisma/client');
+      const { PrismaClient } = _require('@prisma/client');
       prisma = g.__prisma ?? new PrismaClient();
     }
     g.__prisma = prisma;
