@@ -1,14 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
 
 // ============================================================================
-// Prisma singleton (warm between invocations) — lazy init
+// Prisma singleton (warm between invocations) — lazy require to avoid TS error
 // ============================================================================
-const g = globalThis as unknown as { __prisma?: PrismaClient };
-let prisma: PrismaClient;
+const g = globalThis as unknown as { __prisma?: any };
+let prisma: any;
 function getPrisma() {
   if (!prisma) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { PrismaClient } = require('@prisma/client');
     prisma = g.__prisma ?? new PrismaClient();
     g.__prisma = prisma;
   }

@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm --filter @ncts/database exec prisma generate && pnpm --filter @ncts/portal exec vite build",
+  "buildCommand": "cd packages/database && npx prisma generate && cd ../.. && pnpm --filter @ncts/portal exec vite build",
   "outputDirectory": "apps/portal/dist",
   "installCommand": "pnpm install",
   "framework": null,
