@@ -1,13 +1,24 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
 
 // ============================================================================
-// Prisma singleton (warm between invocations)
+// Prisma singleton (warm between invocations) — lazy init to avoid crash
 // ============================================================================
-const g = globalThis as unknown as { _p: PrismaClient };
-const prisma = g._p ?? new PrismaClient();
-if (process.env.NODE_ENV !== 'production') g._p = prisma;
+let prisma: any;
+function getPrisma() {
+  if (!prisma) {
+    try {
+      const { PrismaClient } = require('@prisma/client');
+      const g = globalThis as unknown as { _p: any };
+      prisma = g._p ?? new PrismaClient();
+      if (process.env.NODE_ENV !== 'production') g._p = prisma;
+    } catch (e) {
+      console.error('Prisma init failed:', e);
+      prisma = null;
+    }
+  }
+  return prisma;
+}
 
 // ============================================================================
 // JWT — lightweight HMAC-SHA256
@@ -452,6 +463,9 @@ async function handleSeed(req: VercelRequest, res: VercelResponse) {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // Ensure the Prisma singleton is initialised before any handler runs
+  getPrisma();
 
   const pathArr = req.query.path;
   const seg: string[] = Array.isArray(pathArr) ? pathArr : pathArr ? [pathArr] : [];
