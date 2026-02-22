@@ -1,21 +1,16 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
 
 // ============================================================================
-// Prisma singleton (warm between invocations) — lazy init to avoid crash
+// Prisma singleton (warm between invocations) — lazy init
 // ============================================================================
-let prisma: any;
+const g = globalThis as unknown as { __prisma?: PrismaClient };
+let prisma: PrismaClient;
 function getPrisma() {
   if (!prisma) {
-    try {
-      const { PrismaClient } = require('@prisma/client');
-      const g = globalThis as unknown as { _p: any };
-      prisma = g._p ?? new PrismaClient();
-      if (process.env.NODE_ENV !== 'production') g._p = prisma;
-    } catch (e) {
-      console.error('Prisma init failed:', e);
-      prisma = null;
-    }
+    prisma = g.__prisma ?? new PrismaClient();
+    g.__prisma = prisma;
   }
   return prisma;
 }
