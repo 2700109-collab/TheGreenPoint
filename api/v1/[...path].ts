@@ -55,21 +55,30 @@ async function handleAuth(req: VercelRequest, res: VercelResponse, seg: string[]
     const acct = DEMO.find(a => a.email === email && a.password === password);
     if (!acct) return res.status(401).json({ error: 'Invalid credentials' });
 
-    let user = await prisma.user.findUnique({ where: { email }, include: { tenant: true } });
-    if (!user) {
-      let tenantId: string | null = null;
-      if (acct.role === 'operator_admin') {
-        const t = await prisma.tenant.findFirst();
-        tenantId = t?.id ?? null;
+    // Try DB lookup first; fall back to in-memory demo user if DB unavailable
+    try {
+      let user = await prisma.user.findUnique({ where: { email }, include: { tenant: true } });
+      if (!user) {
+        let tenantId: string | null = null;
+        if (acct.role === 'operator_admin') {
+          const t = await prisma.tenant.findFirst();
+          tenantId = t?.id ?? null;
+        }
+        user = await prisma.user.create({
+          data: { email: acct.email, firstName: acct.firstName, lastName: acct.lastName, role: acct.role, tenantId },
+          include: { tenant: true },
+        });
       }
-      user = await prisma.user.create({
-        data: { email: acct.email, firstName: acct.firstName, lastName: acct.lastName, role: acct.role, tenantId },
-        include: { tenant: true },
-      });
-    }
 
-    const token = signJwt({ userId: user.id, email: user.email, role: user.role, tenantId: user.tenantId, firstName: user.firstName, lastName: user.lastName });
-    return res.json({ accessToken: token, user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role, tenantId: user.tenantId } });
+      const token = signJwt({ userId: user.id, email: user.email, role: user.role, tenantId: user.tenantId, firstName: user.firstName, lastName: user.lastName });
+      return res.json({ accessToken: token, user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role, tenantId: user.tenantId } });
+    } catch (dbErr) {
+      // Database unavailable — issue token from in-memory demo account
+      console.warn('DB unavailable for login, using in-memory fallback:', (dbErr as Error).message);
+      const fallbackId = crypto.randomUUID();
+      const token = signJwt({ userId: fallbackId, email: acct.email, role: acct.role, tenantId: null, firstName: acct.firstName, lastName: acct.lastName });
+      return res.json({ accessToken: token, user: { id: fallbackId, email: acct.email, firstName: acct.firstName, lastName: acct.lastName, role: acct.role, tenantId: null } });
+    }
   }
   return res.status(404).json({ error: 'Not found' });
 }
