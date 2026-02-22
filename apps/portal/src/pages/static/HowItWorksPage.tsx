@@ -19,7 +19,7 @@ export default function HowItWorksPage() {
           { step: '1', icon: <Building2 size={24} />, title: 'Registration', desc: 'Licensed operators register their facilities and obtain permits through SAHPRA. Each facility is geo-tagged and assigned a unique identifier.' },
           { step: '2', icon: <FileText size={24} />, title: 'Plant Tracking', desc: 'Every plant is assigned a unique tracking ID (e.g., NCTS-ZA-2026-000001) at the seed or seedling stage. Its lifecycle is tracked through vegetative, flowering, and harvest stages.' },
           { step: '3', icon: <BarChart3 size={24} />, title: 'Lab Testing', desc: 'Batches are sent to accredited SANAS laboratories for testing. THC/CBD content, pesticides, heavy metals, and microbials are analysed and results recorded.' },
-          { step: '4', icon: <PieChart size={24} />, title: 'Sale & Verification', desc: 'Before sale, products receive a QR code linking to the verification portal. Consumers can scan to confirm authenticity, view lab results, and trace the product's full history.' },
+          { step: '4', icon: <PieChart size={24} />, title: 'Sale & Verification', desc: 'Before sale, products receive a QR code linking to the verification portal. Consumers can scan to confirm authenticity, view lab results, and trace the product\u2019s full history.' },
         ].map((item) => (
           <Col xs={24} sm={12} key={item.step}>
             <Card style={{ height: '100%' }}>
