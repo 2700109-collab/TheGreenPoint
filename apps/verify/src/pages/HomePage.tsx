@@ -5,7 +5,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
-const TRACKING_ID_REGEX = /^(PLT|TRF|SAL)-\d{8}-[A-Z0-9]{3,6}$/;
+const TRACKING_ID_REGEX = /^(PLT|TRF|SAL)-\d{8}-[A-Z0-9]{3,6}$|^NCTS-ZA-\d{4}-\d{4,8}$/;
 
 function HomePage() {
   const navigate = useNavigate();
@@ -16,7 +16,7 @@ function HomePage() {
   function validate(value: string): string {
     if (!value.trim()) return 'Please enter a tracking ID.';
     if (!TRACKING_ID_REGEX.test(value.trim())) {
-      return 'Invalid format. Expected: PLT-YYYYMMDD-XXXX, TRF-YYYYMMDD-XXXX, or SAL-YYYYMMDD-XXXX';
+      return 'Invalid format. Expected: NCTS-ZA-2026-000001 or PLT-YYYYMMDD-XXXX';
     }
     return '';
   }
@@ -69,7 +69,7 @@ function HomePage() {
               if (touched) setValidationError(validate(e.target.value.toUpperCase()));
             }}
             onBlur={handleBlur}
-            placeholder="e.g. PLT-20260115-AB12"
+            placeholder="e.g. NCTS-ZA-2026-000001"
             className="h-11 pl-12 text-base font-mono tracking-wide"
             aria-label="Tracking ID"
             autoComplete="off"

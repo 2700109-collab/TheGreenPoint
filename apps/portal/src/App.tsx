@@ -10,6 +10,16 @@ import AdminLayout from './components/layout/AdminLayout';
 import AuthLayout from './components/layout/AuthLayout';
 
 // ---------------------------------------------------------------------------
+// Static / info pages (public)
+// ---------------------------------------------------------------------------
+const AboutPage = lazy(() => import('./pages/static/AboutPage'));
+const HowItWorksPage = lazy(() => import('./pages/static/HowItWorksPage'));
+const PrivacyPage = lazy(() => import('./pages/static/PrivacyPage'));
+const TermsPage = lazy(() => import('./pages/static/TermsPage'));
+const AccessibilityPage = lazy(() => import('./pages/static/AccessibilityPage'));
+const CookiePolicyPage = lazy(() => import('./pages/static/CookiePolicyPage'));
+
+// ---------------------------------------------------------------------------
 // Auth pages
 // ---------------------------------------------------------------------------
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -159,6 +169,21 @@ export default function App() {
           <Route path="settings/thresholds" element={<SystemSettingsPage />} />
           <Route path="settings/users" element={<SystemSettingsPage />} />
         </Route>
+
+        {/* ----------------------------------------------------------------- */}
+        {/* Public static/info pages                                           */}
+        {/* ----------------------------------------------------------------- */}
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/how-it-works" element={<HowItWorksPage />} />
+        <Route path="/for-operators" element={<HowItWorksPage />} />
+        <Route path="/for-regulators" element={<HowItWorksPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/paia" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/accessibility" element={<AccessibilityPage />} />
+        <Route path="/cookies" element={<CookiePolicyPage />} />
+        <Route path="/support" element={<AboutPage />} />
+        <Route path="/report-issue" element={<AboutPage />} />
 
         {/* ----------------------------------------------------------------- */}
         {/* Root redirect based on user role                                   */}

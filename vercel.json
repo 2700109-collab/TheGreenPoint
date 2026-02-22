@@ -4,8 +4,9 @@
   "outputDirectory": "apps/portal/dist",
   "installCommand": "pnpm install",
   "framework": null,
-  "rewrites": [
-    { "source": "/api/v1/(.*)", "destination": "/api/v1/$1" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/api/v1/(.*)", "dest": "/api/v1/$1" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

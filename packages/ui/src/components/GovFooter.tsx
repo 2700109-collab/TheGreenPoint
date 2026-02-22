@@ -26,7 +26,7 @@ export interface GovFooterProps {
   sections?: FooterSection[];
   /** Copyright year. Default: current year */
   copyrightYear?: number;
-  /** Department name. Default: "Department of Health" */
+  /** Department name. Default: "SAHPRA" */
   department?: string;
   /** Show language selector. Default: true */
   showLanguageSelector?: boolean;
@@ -64,7 +64,7 @@ const defaultSections: FooterSection[] = [
     title: 'Contact',
     links: [
       { label: 'Technical Support', href: '/support' },
-      { label: 'ncts@health.gov.za', href: 'mailto:ncts@health.gov.za' },
+      { label: 'ncts@sahpra.gov.za', href: 'mailto:ncts@sahpra.gov.za' },
       { label: '0800-NCTS (6287)', href: 'tel:08006287' },
       { label: 'Report an Issue', href: '/report-issue' },
     ],
@@ -73,10 +73,10 @@ const defaultSections: FooterSection[] = [
 
 const languageOptions = [
   { value: 'en', label: 'English' },
-  { value: 'af', label: 'Afrikaans' },
-  { value: 'zu', label: 'isiZulu' },
-  { value: 'xh', label: 'isiXhosa' },
-  { value: 'st', label: 'Sesotho' },
+  { value: 'af', label: 'Afrikaans — Coming soon', disabled: true },
+  { value: 'zu', label: 'isiZulu — Coming soon', disabled: true },
+  { value: 'xh', label: 'isiXhosa — Coming soon', disabled: true },
+  { value: 'st', label: 'Sesotho — Coming soon', disabled: true },
 ];
 
 // ---------------------------------------------------------------------------
@@ -173,7 +173,7 @@ function FooterLinkItem({ link }: { link: FooterLink }) {
 export function GovFooter({
   sections = defaultSections,
   copyrightYear = new Date().getFullYear(),
-  department = 'Department of Health',
+  department = 'SAHPRA',
   showLanguageSelector = true,
   language = 'en',
   onLanguageChange,
