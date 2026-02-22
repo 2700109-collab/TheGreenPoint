@@ -1,12 +1,40 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
-import type { CreateFacilityDto, UpdateFacilityDto, PaginatedResponse } from '@ncts/shared-types';
+import type { PaginatedResponse } from '@ncts/shared-types';
+import type { CreateFacilityDto, UpdateFacilityDto } from './dto';
+import type { Facility, Zone, Permit } from '@prisma/client';
+
+/** Facility with zones for create/update responses */
+interface FacilityWithZones extends Facility {
+  zones: Zone[];
+}
+
+/** Facility list item with zones and counts */
+interface FacilityListItem extends Facility {
+  zones: Zone[];
+  _count: { plants: number; permits: number };
+}
+
+/** Facility list item with tenant info for regulator view */
+interface FacilityRegulatorItem extends Facility {
+  tenant: { id: string; name: string; tradingName: string | null; complianceStatus: string | null };
+  zones: Zone[];
+  _count: { plants: number; permits: number };
+}
+
+/** Detailed facility with tenant, zones, permits, and counts */
+interface FacilityDetail extends Facility {
+  tenant: { id: string; name: string; tradingName: string | null };
+  zones: Zone[];
+  permits: Permit[];
+  _count: { plants: number; harvests: number; batches: number; sales: number };
+}
 
 @Injectable()
 export class FacilitiesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(tenantId: string, dto: CreateFacilityDto): Promise<any> {
+  async create(tenantId: string, dto: CreateFacilityDto): Promise<FacilityWithZones> {
     return this.prisma.facility.create({
       data: {
         tenantId,
@@ -26,7 +54,7 @@ export class FacilitiesService {
     tenantId: string,
     page = 1,
     limit = 20,
-  ): Promise<PaginatedResponse<any>> {
+  ): Promise<PaginatedResponse<FacilityListItem>> {
     const skip = (page - 1) * limit;
 
     const [data, total] = await Promise.all([
@@ -54,7 +82,7 @@ export class FacilitiesService {
     };
   }
 
-  async findAllForRegulator(page = 1, limit = 20): Promise<PaginatedResponse<any>> {
+  async findAllForRegulator(page = 1, limit = 20): Promise<PaginatedResponse<FacilityRegulatorItem>> {
     const skip = (page - 1) * limit;
 
     const [data, total] = await Promise.all([
@@ -77,7 +105,7 @@ export class FacilitiesService {
     };
   }
 
-  async findOne(id: string, tenantId?: string): Promise<any> {
+  async findOne(id: string, tenantId?: string): Promise<FacilityDetail> {
     const where = tenantId ? { id, tenantId } : { id };
     const facility = await this.prisma.facility.findFirst({
       where,
@@ -96,7 +124,7 @@ export class FacilitiesService {
     return facility;
   }
 
-  async update(id: string, tenantId: string, dto: UpdateFacilityDto): Promise<any> {
+  async update(id: string, tenantId: string, dto: UpdateFacilityDto): Promise<FacilityWithZones> {
     // Verify ownership
     await this.findOne(id, tenantId);
 
@@ -105,11 +133,11 @@ export class FacilitiesService {
       data: {
         ...(dto.name && { name: dto.name }),
         ...(dto.address && { address: dto.address }),
-        ...(dto.boundary && { boundary: dto.boundary }),
+        ...(dto.boundary && { boundary: JSON.parse(JSON.stringify(dto.boundary)) }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
       },
       include: { zones: true },
-    });
+    }) as unknown as FacilityWithZones;
   }
 
   async createZone(

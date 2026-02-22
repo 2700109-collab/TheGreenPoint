@@ -28,6 +28,7 @@
   "devDependencies": {
     "@commitlint/cli": "^20.4.2",
     "@commitlint/config-conventional": "^20.4.2",
+    "@vercel/node": "^5.6.6",
     "husky": "^9.1.0",
     "prettier": "^3.5.0",
     "rimraf": "^6.0.0",
@@ -40,6 +41,18 @@
       "@prisma/client",
       "@prisma/engines",
       "@nestjs/core"
+    ],
+    "ignoredBuiltDependencies": [
+      "@nestjs/core",
+      "@prisma/client",
+      "@prisma/engines",
+      "@scarf/scarf",
+      "@swc/core",
+      "esbuild",
+      "prisma"
     ]
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.2"
   }
 }

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../database/prisma.service';
+import { NotificationService } from '../../notifications/notification.service';
 import { verifyChain } from '@ncts/audit-lib';
 
 /**
@@ -13,7 +14,10 @@ import { verifyChain } from '@ncts/audit-lib';
 export class AuditVerifierService {
   private readonly logger = new Logger(AuditVerifierService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   @Cron(CronExpression.EVERY_6_HOURS)
   async verifyRecentAuditChain() {
@@ -68,8 +72,22 @@ export class AuditVerifierService {
           `Checked ${result.checkedCount} events.`,
         );
 
-        // TODO: Send alert via EventBridge/SNS/email
-        // In production, this would trigger a PagerDuty/Opsgenie incident
+        // Dispatch tamper alert to all regulators and super_admins
+        const alertNotification = {
+          type: 'critical',
+          title: 'CRITICAL: Audit Chain Tampering Detected',
+          body:
+            `Audit chain integrity verification FAILED at event index ${result.brokenAt}. ` +
+            `Expected hash: ${result.expectedHash}, Actual hash: ${result.actualHash}. ` +
+            `${result.checkedCount} events were checked. Immediate investigation required.`,
+          channel: 'email' as const,
+          entityType: 'audit_event',
+        };
+
+        await Promise.all([
+          this.notificationService.sendToRole('regulator', alertNotification),
+          this.notificationService.sendToRole('super_admin', alertNotification),
+        ]);
       }
     } catch (error) {
       this.logger.error(

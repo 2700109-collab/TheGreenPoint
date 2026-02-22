@@ -13,6 +13,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PlantsService } from './plants.service';
 import { JwtAuthGuard, TenantGuard, RolesGuard, Roles, CurrentUser, TenantId } from '../auth';
 import type { AuthenticatedUser } from '../auth';
+import { CreatePlantDto, BatchCreatePlantsDto, UpdatePlantStateDto, PlantFilterDto } from './dto';
 
 @ApiTags('plants')
 @ApiBearerAuth()
@@ -24,7 +25,7 @@ export class PlantsController {
   @UseGuards(JwtAuthGuard, RolesGuard, TenantGuard)
   @Roles('operator_admin', 'operator_staff')
   @ApiOperation({ summary: 'Register a new plant' })
-  create(@TenantId() tenantId: string, @Body() dto: any) {
+  create(@TenantId() tenantId: string, @Body() dto: CreatePlantDto) {
     return this.plantsService.create(tenantId, dto);
   }
 
@@ -32,7 +33,7 @@ export class PlantsController {
   @UseGuards(JwtAuthGuard, RolesGuard, TenantGuard)
   @Roles('operator_admin', 'operator_staff')
   @ApiOperation({ summary: 'Bulk register plants' })
-  batchCreate(@TenantId() tenantId: string, @Body() dto: any) {
+  batchCreate(@TenantId() tenantId: string, @Body() dto: BatchCreatePlantsDto) {
     return this.plantsService.batchCreate(tenantId, dto);
   }
 
@@ -40,7 +41,7 @@ export class PlantsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('operator_admin', 'operator_staff', 'regulator', 'inspector')
   @ApiOperation({ summary: 'List plants with filtering & pagination' })
-  findAll(@CurrentUser() user: AuthenticatedUser, @Query() query: any) {
+  findAll(@CurrentUser() user: AuthenticatedUser, @Query() query: PlantFilterDto) {
     if (['regulator', 'inspector', 'admin'].includes(user.role)) {
       return this.plantsService.findAllForRegulator(query);
     }
@@ -68,7 +69,7 @@ export class PlantsController {
   updateState(
     @Param('id', ParseUUIDPipe) id: string,
     @TenantId() tenantId: string,
-    @Body() dto: any,
+    @Body() dto: UpdatePlantStateDto,
   ) {
     return this.plantsService.updateState(id, tenantId, dto);
   }

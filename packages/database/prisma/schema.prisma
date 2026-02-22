@@ -42,21 +42,41 @@ model Tenant {
   transfers  Transfer[]
   sales      Sale[]
 
+  // Section 0.2 relations
+  inspections         Inspection[]
+  complianceAlerts    ComplianceAlert[]
+  inventorySnapshots  InventorySnapshot[]
+  destructionEvents   DestructionEvent[]
+  exciseLedger        ExciseLedger[]
+  importExportRecords ImportExportRecord[]
+  plantingIntentions  PlantingIntention[]
+
   @@map("tenants")
 }
 
 model User {
-  id          String    @id @default(uuid()) @db.Uuid
-  cognitoId   String?   @unique @map("cognito_id")
-  email       String    @unique
-  firstName   String    @map("first_name")
-  lastName    String    @map("last_name")
-  role        String
-  tenantId    String?   @map("tenant_id") @db.Uuid
-  isActive    Boolean   @default(true) @map("is_active")
-  lastLoginAt DateTime? @map("last_login_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id                  String    @id @default(uuid()) @db.Uuid
+  cognitoId           String?   @unique @map("cognito_id")
+  email               String    @unique
+  firstName           String    @map("first_name")
+  lastName            String    @map("last_name")
+  role                String
+  tenantId            String?   @map("tenant_id") @db.Uuid
+  isActive            Boolean   @default(true) @map("is_active")
+  lastLoginAt         DateTime? @map("last_login_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  // Section 0.7 — Auth fields
+  passwordHash        String?   @map("password_hash")
+  passwordHistory     String[]  @default([]) @map("password_history")
+  isLocked            Boolean   @default(false) @map("is_locked")
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime? @map("locked_until")
+  lastLoginIp         String?   @map("last_login_ip")
+  forcePasswordChange Boolean   @default(false) @map("force_password_change")
+  mfaEnabled          Boolean   @default(false) @map("mfa_enabled")
+  mfaSecret           String?   @map("mfa_secret")
 
   tenant Tenant? @relation(fields: [tenantId], references: [id])
 
@@ -68,7 +88,7 @@ model Permit {
   id               String   @id @default(uuid()) @db.Uuid
   tenantId         String   @map("tenant_id") @db.Uuid
   facilityId       String   @map("facility_id") @db.Uuid
-  permitType       String   @map("permit_type")
+  permitType       String   @default("sahpra_22a") @map("permit_type")
   permitNumber     String   @unique @map("permit_number")
   issuingAuthority String   @map("issuing_authority")
   issueDate        DateTime @map("issue_date")
@@ -77,6 +97,16 @@ model Permit {
   conditions       String?
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Section 0.7 — SAHPRA permit fields
+  authorizedSubstances   Json?     @map("authorized_substances")
+  authorizedActivities   String[]  @map("authorized_activities")
+  maxAnnualQuantityKg    Float?    @map("max_annual_quantity_kg")
+  responsiblePersonName  String?   @map("responsible_person_name")
+  responsiblePersonReg   String?   @map("responsible_person_reg")
+  renewalDate            DateTime? @map("renewal_date")
+  applicationReference   String?   @map("application_reference")
+  previousPermitId       String?   @map("previous_permit_id") @db.Uuid
 
   tenant   Tenant   @relation(fields: [tenantId], references: [id])
   facility Facility @relation(fields: [facilityId], references: [id])
@@ -100,6 +130,10 @@ model Facility {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
+  // Section 0.7 — Municipal license fields
+  municipalLicenseNumber String?   @map("municipal_license_number")
+  municipalLicenseExpiry DateTime? @map("municipal_license_expiry")
+
   tenant   Tenant    @relation(fields: [tenantId], references: [id])
   zones    Zone[]
   plants   Plant[]
@@ -107,6 +141,12 @@ model Facility {
   harvests Harvest[]
   batches  Batch[]
   sales    Sale[]
+
+  // Section 0.2 relations
+  inspections        Inspection[]
+  inventorySnapshots InventorySnapshot[]
+  destructionEvents  DestructionEvent[]
+  plantingIntentions PlantingIntention[]
 
   @@index([tenantId])
   @@map("facilities")
@@ -194,6 +234,7 @@ model Batch {
   processedWeightGrams Float?    @map("processed_weight_grams")
   labResultId          String?   @map("lab_result_id") @db.Uuid
   parentBatchId        String?   @map("parent_batch_id") @db.Uuid
+  productCategory      String?   @default("dried_flower") @map("product_category")
   createdDate          DateTime  @map("created_date")
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")
@@ -232,6 +273,7 @@ model Harvest {
   facility Facility @relation(fields: [facilityId], references: [id])
 
   @@index([tenantId])
+  @@index([tenantId, createdAt])
   @@map("harvests")
 }
 
@@ -239,7 +281,7 @@ model LabResult {
   id                       String   @id @default(uuid()) @db.Uuid
   tenantId                 String   @map("tenant_id") @db.Uuid
   labName                  String   @map("lab_name")
-  labAccreditationNumber   String   @map("lab_accreditation_number")
+  labAccreditationNumber   String?  @map("lab_accreditation_number")
   testDate                 DateTime @map("test_date")
   status                   String   @default("pending")
   thcPercent               Float    @map("thc_percent")
@@ -353,4 +395,402 @@ model AuditEvent {
   @@index([tenantId])
   @@index([createdAt])
   @@map("audit_events")
+}
+
+// ============================================================================
+// Section 0.2 — New Models
+// ============================================================================
+
+// 0.2.1 Inspection Model (P0 — Critical)
+model Inspection {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId              String    @map("tenant_id") @db.Uuid
+  facilityId            String    @map("facility_id") @db.Uuid
+  inspectorId           String    @map("inspector_id") @db.Uuid
+  type                  String    // 'routine' | 'complaint' | 'follow_up' | 'random'
+  priority              String    @default("medium") // 'low' | 'medium' | 'high' | 'critical'
+  status                String    @default("scheduled") // 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'overdue'
+  scheduledDate         DateTime  @map("scheduled_date")
+  actualStartDate       DateTime? @map("actual_start_date")
+  completedDate         DateTime? @map("completed_date")
+  estimatedDurationHrs  Float?    @map("estimated_duration_hrs")
+  checklist             Json?     // [{item: string, status: 'pass'|'fail'|'na', notes: string, severity: string}]
+  findings              String?   @db.Text
+  overallOutcome        String?   @map("overall_outcome") // 'pass' | 'conditional_pass' | 'fail'
+  remediationRequired   Boolean   @default(false) @map("remediation_required")
+  remediationDeadline   DateTime? @map("remediation_deadline")
+  remediationNotes      String?   @map("remediation_notes") @db.Text
+  followUpInspectionId  String?   @map("follow_up_inspection_id") @db.Uuid
+  photos                String[]  // S3 URLs
+  reportUrl             String?   @map("report_url") // Generated PDF URL
+  reason                String?   @db.Text
+  additionalInspectors  String[]  @map("additional_inspectors") // User IDs
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  facility  Facility @relation(fields: [facilityId], references: [id])
+
+  @@index([tenantId])
+  @@index([facilityId])
+  @@index([inspectorId])
+  @@index([status])
+  @@index([scheduledDate])
+  @@map("inspections")
+}
+
+// 0.2.2 ComplianceRule Model (P0 — Critical)
+model ComplianceRule {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String
+  description     String   @db.Text
+  category        String   // 'permit' | 'inventory' | 'lab' | 'production' | 'transfer' | 'verification'
+  severity        String   // 'info' | 'warning' | 'critical'
+  evaluationType  String   @map("evaluation_type") // 'real_time' | 'batch' | 'scheduled'
+  ruleDefinition  Json     @map("rule_definition")
+  thresholds      Json?
+  escalationPolicy Json?   @map("escalation_policy")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdBy       String?  @map("created_by") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  alerts ComplianceAlert[]
+
+  @@index([category])
+  @@index([isActive])
+  @@map("compliance_rules")
+}
+
+// 0.2.3 ComplianceAlert Model (P0 — Critical)
+model ComplianceAlert {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ruleId            String    @map("rule_id") @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  facilityId        String?   @map("facility_id") @db.Uuid
+  severity          String    // 'info' | 'warning' | 'critical'
+  alertType         String    @map("alert_type")
+  description       String    @db.Text
+  entityType        String?   @map("entity_type") // 'plant' | 'batch' | 'transfer' | 'permit' | 'facility'
+  entityId          String?   @map("entity_id") @db.Uuid
+  status            String    @default("open") // 'open' | 'acknowledged' | 'investigating' | 'resolved' | 'escalated'
+  assignedTo        String?   @map("assigned_to") @db.Uuid
+  escalationLevel   Int       @default(0) @map("escalation_level")
+  resolvedAt        DateTime? @map("resolved_at")
+  resolvedBy        String?   @map("resolved_by") @db.Uuid
+  resolutionNotes   String?   @map("resolution_notes") @db.Text
+  autoActions       Json?     @map("auto_actions") // e.g., {suspendPermit: true}
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  rule   ComplianceRule @relation(fields: [ruleId], references: [id])
+  tenant Tenant         @relation(fields: [tenantId], references: [id])
+
+  @@index([ruleId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([severity])
+  @@index([createdAt])
+  @@map("compliance_alerts")
+}
+
+// 0.2.4 InventorySnapshot Model (P1)
+model InventorySnapshot {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String    @map("tenant_id") @db.Uuid
+  facilityId          String    @map("facility_id") @db.Uuid
+  snapshotDate        DateTime  @map("snapshot_date")
+  snapshotType        String    @map("snapshot_type") // 'automatic' | 'manual' | 'audit'
+  items               Json      // [{batchId, expectedGrams, declaredGrams, variance}]
+  totalExpectedGrams  Float     @map("total_expected_grams")
+  totalDeclaredGrams  Float     @map("total_declared_grams")
+  variancePercent     Float     @map("variance_percent")
+  status              String    @default("clean") // 'clean' | 'flagged' | 'under_investigation'
+  investigatorId      String?   @map("investigator_id") @db.Uuid
+  notes               String?   @db.Text
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  facility Facility @relation(fields: [facilityId], references: [id])
+
+  @@index([tenantId])
+  @@index([facilityId])
+  @@index([snapshotDate])
+  @@map("inventory_snapshots")
+}
+
+// 0.2.5 OutboxEvent Model (P1)
+model OutboxEvent {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventType      String    @map("event_type") // e.g., 'plant.created', 'transfer.accepted'
+  aggregateType  String    @map("aggregate_type") // 'plant' | 'transfer' | 'batch' | etc.
+  aggregateId    String    @map("aggregate_id") @db.Uuid
+  payload        Json
+  publishedAt    DateTime? @map("published_at") // null = not yet published
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@index([publishedAt]) // NULL index for polling unpublished events
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("outbox_events")
+}
+
+// 0.2.6 DestructionEvent Model (P1)
+model DestructionEvent {
+  id                       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId                 String    @map("tenant_id") @db.Uuid
+  facilityId               String    @map("facility_id") @db.Uuid
+  entityType               String    @map("entity_type") // 'plant' | 'batch'
+  entityIds                String[]  @map("entity_ids") // UUIDs of plants or batches destroyed
+  quantityKg               Float     @map("quantity_kg")
+  destructionMethod        String    @map("destruction_method") // 'incineration' | 'grinding' | 'composting'
+  destructionDate          DateTime  @map("destruction_date")
+  witnessNames             String[]  @map("witness_names")
+  witnessOrganizations     String[]  @map("witness_organizations") // e.g., 'SAPS', 'SAHPRA'
+  witnessSignatures        String[]  @map("witness_signatures") // S3 URLs for signature images
+  reason                   String    // 'failed_lab' | 'expired' | 'damaged' | 'regulatory_order' | 'excess'
+  photos                   String[]  // S3 URLs
+  videoUrl                 String?   @map("video_url")
+  regulatoryNotified       Boolean   @default(false) @map("regulatory_notified")
+  regulatoryNotifiedAt     DateTime? @map("regulatory_notified_at")
+  approvedBy               String    @map("approved_by") @db.Uuid
+  createdAt                DateTime  @default(now()) @map("created_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  facility Facility @relation(fields: [facilityId], references: [id])
+
+  @@index([tenantId])
+  @@index([facilityId])
+  @@index([destructionDate])
+  @@map("destruction_events")
+}
+
+// 0.2.7 SuspiciousReport Model (P2)
+model SuspiciousReport {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  trackingId          String    @map("tracking_id")
+  reason              String    @db.Text
+  reporterIp          String?   @map("reporter_ip")
+  reporterContact     String?   @map("reporter_contact")
+  reporterLocation    Json?     @map("reporter_location") // {lat, lng}
+  investigationStatus String    @default("new") @map("investigation_status") // 'new' | 'reviewing' | 'confirmed' | 'dismissed'
+  investigatorId      String?   @map("investigator_id") @db.Uuid
+  investigatorNotes   String?   @map("investigator_notes") @db.Text
+  resolvedAt          DateTime? @map("resolved_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  @@index([trackingId])
+  @@index([investigationStatus])
+  @@index([createdAt])
+  @@map("suspicious_reports")
+}
+
+// 0.2.8 ExciseRate Model (P2)
+model ExciseRate {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productCategory String    @map("product_category") // 'dried_flower' | 'extract' | 'edible' | 'hemp_fiber'
+  ratePerUnit     Float     @map("rate_per_unit") // ZAR per gram/ml/unit
+  unit            String    // 'gram' | 'ml' | 'unit'
+  effectiveDate   DateTime  @map("effective_date")
+  expiryDate      DateTime? @map("expiry_date")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdBy       String?   @map("created_by") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  ledgerEntries ExciseLedger[]
+
+  @@index([productCategory, isActive])
+  @@map("excise_rates")
+}
+
+// 0.2.9 ExciseLedger Model (P2)
+model ExciseLedger {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  saleId          String   @map("sale_id") @db.Uuid
+  batchId         String   @map("batch_id") @db.Uuid
+  rateId          String   @map("rate_id") @db.Uuid
+  quantity        Float
+  unit            String
+  rateApplied     Float    @map("rate_applied")
+  dutyAmountZar   Float    @map("duty_amount_zar")
+  reportingPeriod String   @map("reporting_period") // 'YYYY-MM'
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  tenant Tenant     @relation(fields: [tenantId], references: [id])
+  rate   ExciseRate @relation(fields: [rateId], references: [id])
+
+  @@index([tenantId, reportingPeriod])
+  @@index([reportingPeriod])
+  @@map("excise_ledger")
+}
+
+// 0.2.10 ImportExportRecord Model (P2)
+model ImportExportRecord {
+  id                       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId                 String    @map("tenant_id") @db.Uuid
+  type                     String    // 'import' | 'export'
+  countryCode              String    @map("country_code") // ISO 3166-1 alpha-2
+  partnerCompany           String    @map("partner_company")
+  batchId                  String    @map("batch_id") @db.Uuid
+  quantityKg               Float     @map("quantity_kg")
+  productCategory          String    @map("product_category")
+  permitId                 String    @map("permit_id") @db.Uuid
+  customsDeclarationNumber String?   @map("customs_declaration_number")
+  shippingDate             DateTime? @map("shipping_date")
+  arrivalDate              DateTime? @map("arrival_date")
+  status                   String    @default("pending") // 'pending' | 'in_transit' | 'completed' | 'cancelled'
+  documents                Json?     // [{type: string, url: string}]
+  createdAt                DateTime  @default(now()) @map("created_at")
+  updatedAt                DateTime  @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([type])
+  @@index([status])
+  @@map("import_export_records")
+}
+
+// 0.2.11 PlantingIntention Model (P2)
+model PlantingIntention {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  facilityId      String    @map("facility_id") @db.Uuid
+  season          String    // '2026/2027'
+  cultivars       Json      // [{strainId, areaHectares, estimatedYieldKg}]
+  totalAreaHa     Float     @map("total_area_ha")
+  totalEstYieldKg Float     @map("total_est_yield_kg")
+  plantingStart   DateTime  @map("planting_start")
+  plantingEnd     DateTime  @map("planting_end")
+  status          String    @default("draft") // 'draft' | 'submitted' | 'acknowledged'
+  submittedAt     DateTime? @map("submitted_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  facility Facility @relation(fields: [facilityId], references: [id])
+
+  @@index([tenantId, season])
+  @@map("planting_intentions")
+}
+
+// 0.2.12 Consent Model (P2)
+model Consent {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  consentType   String    @map("consent_type") // 'data_processing' | 'marketing' | 'analytics' | 'third_party_sharing'
+  granted       Boolean
+  policyVersion String    @map("policy_version")
+  ipAddress     String?   @map("ip_address")
+  userAgent     String?   @map("user_agent")
+  withdrawnAt   DateTime? @map("withdrawn_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([consentType])
+  @@map("consents")
+}
+
+// 0.2.13 Notification Model (P1)
+model Notification {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  type        String    // 'info' | 'warning' | 'critical' | 'action_required'
+  channel     String    @default("in_app") // 'in_app' | 'email' | 'sms'
+  title       String
+  body        String    @db.Text
+  entityType  String?   @map("entity_type")
+  entityId    String?   @map("entity_id") @db.Uuid
+  actionUrl   String?   @map("action_url")
+  readAt      DateTime? @map("read_at")
+  sentAt      DateTime? @map("sent_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+// 0.2.14 PatientAccess Model (P3)
+model PatientAccess {
+  id                      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pseudonymizedPatientId  String   @map("pseudonymized_patient_id") // SHA-256 hash of SA ID + salt
+  prescribingDoctorHpcsa  String   @map("prescribing_doctor_hpcsa")
+  diagnosisCategory       String   @map("diagnosis_category") // ICD-10 category only
+  productCategory         String   @map("product_category")
+  quantityDispensedGrams  Float    @map("quantity_dispensed_grams")
+  dispensingDate          DateTime @map("dispensing_date")
+  dispensingFacilityId    String   @map("dispensing_facility_id") @db.Uuid
+  batchId                 String   @map("batch_id") @db.Uuid
+  createdAt               DateTime @default(now()) @map("created_at")
+
+  @@index([pseudonymizedPatientId])
+  @@index([dispensingDate])
+  @@index([dispensingFacilityId])
+  @@map("patient_access")
+}
+
+// ============================================================================
+// Missing models referenced by codebase
+// ============================================================================
+
+model VerificationLog {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  trackingId    String   @map("tracking_id")
+  tenantId      String?  @map("tenant_id") @db.Uuid // Tenant of the scanned product (null for public scans)
+  scannerIp     String?  @map("scanner_ip")
+  userAgent     String?  @map("user_agent")
+  location      Json?    // {lat, lng}
+  resultStatus  String   @map("result_status") // 'verified' | 'not_found' | 'suspicious'
+  responseData  Json?    @map("response_data")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([trackingId])
+  @@index([tenantId])
+  @@index([createdAt])
+  @@map("verification_logs")
+}
+
+model QrCode {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  entityType  String   @map("entity_type") // 'plant' | 'batch' | 'transfer'
+  entityId    String   @map("entity_id") @db.Uuid
+  trackingId  String   @map("tracking_id")
+  payload     String   @db.Text // Encoded QR payload
+  hmac        String   // HMAC-SHA256 signature
+  version     Int      @default(1)
+  isActive    Boolean  @default(true) @map("is_active")
+  generatedAt DateTime @default(now()) @map("generated_at")
+  scannedCount Int     @default(0) @map("scanned_count")
+  lastScannedAt DateTime? @map("last_scanned_at")
+
+  @@unique([entityType, entityId])
+  @@index([tenantId])
+  @@index([trackingId])
+  @@index([entityType, entityId])
+  @@map("qr_codes")
+}
+
+model RegulatoryReport {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String?   @map("tenant_id") @db.Uuid
+  reportType      String    @map("report_type") // 'monthly_summary' | 'annual' | 'incident' | 'audit'
+  reportingPeriod String    @map("reporting_period") // 'YYYY-MM' or 'YYYY'
+  title           String
+  generatedBy     String    @map("generated_by") @db.Uuid
+  data            Json      // Report payload
+  fileUrl         String?   @map("file_url") // Generated PDF/CSV URL
+  status          String    @default("draft") // 'draft' | 'final' | 'submitted'
+  submittedTo     String?   @map("submitted_to") // 'SAHPRA' | 'DALRRD' | 'SARS'
+  submittedAt     DateTime? @map("submitted_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([reportType])
+  @@index([tenantId])
+  @@index([reportingPeriod])
+  @@map("regulatory_reports")
 }

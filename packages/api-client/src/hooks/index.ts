@@ -7,3 +7,8 @@ export { useTransfers, useTransfer, useInitiateTransfer, useAcceptTransfer, useR
 export { useSales, useSale, useRecordSale, saleKeys } from './use-sales';
 export { useRegulatoryDashboard, useRegulatoryTrends, useFacilitiesGeo, useOperators, usePermits, useUpdatePermitStatus, useComplianceAlerts, regulatoryKeys, type TrendDataPoint, type FacilityGeoPoint, type ComplianceAlert } from './use-regulatory';
 export { useVerifyProduct, verifyKeys } from './use-verification';
+export { useRealtimeUpdates } from './use-realtime';
+export type { RealtimeEvent } from './use-realtime';
+export { useLogin, useVerifyMfa, useForgotPassword, useResetPassword, useRefreshSession, useChangePassword, useSetupMfa, useLogout, useCurrentUser, authKeys } from './use-auth';
+export { useInspections, useInspection, useCreateInspection, useUpdateInspection, useInspectionAnalytics, useAuditLog, useSystemSettings, useUpdateSystemSettings, useAdminUsers, useSalesAggregate, useComplianceAverage, adminKeys } from './use-admin';
+export { useOperatorDashboard, useActivityFeed, useGlobalSearch, useNotifications, useMarkNotificationRead, operatorDashboardKeys } from './use-operator-dashboard';

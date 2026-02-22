@@ -12,9 +12,10 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
-import { TransfersService } from './transfers.service';
+import { TransfersService, type TransferDetail } from './transfers.service';
 import { JwtAuthGuard, RolesGuard, TenantGuard, Roles, CurrentUser, TenantId } from '../auth';
 import type { AuthenticatedUser } from '../auth';
+import { CreateTransferDto, AcceptTransferDto, RejectTransferDto } from './dto';
 
 @ApiTags('transfers')
 @ApiBearerAuth()
@@ -26,7 +27,7 @@ export class TransfersController {
   @UseGuards(JwtAuthGuard, RolesGuard, TenantGuard)
   @Roles('operator_admin')
   @ApiOperation({ summary: 'Initiate a transfer (digital manifest)' })
-  create(@TenantId() tenantId: string, @Body() dto: any): Promise<any> {
+  create(@TenantId() tenantId: string, @Body() dto: CreateTransferDto) {
     return this.transfersService.create(tenantId, dto);
   }
 
@@ -54,7 +55,7 @@ export class TransfersController {
   findOne(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser,
-  ): Promise<any> {
+  ): Promise<TransferDetail> {
     const tenantId = ['regulator', 'inspector'].includes(user.role) ? undefined : user.tenantId;
     return this.transfersService.findOne(id, tenantId);
   }
@@ -66,8 +67,8 @@ export class TransfersController {
   accept(
     @Param('id', ParseUUIDPipe) id: string,
     @TenantId() tenantId: string,
-    @Body() dto: any,
-  ): Promise<any> {
+    @Body() dto: AcceptTransferDto,
+  ) {
     return this.transfersService.accept(id, tenantId, dto);
   }
 
@@ -78,8 +79,8 @@ export class TransfersController {
   reject(
     @Param('id', ParseUUIDPipe) id: string,
     @TenantId() tenantId: string,
-    @Body() dto: any,
-  ): Promise<any> {
+    @Body() dto: RejectTransferDto,
+  ) {
     return this.transfersService.reject(id, tenantId, dto);
   }
 }

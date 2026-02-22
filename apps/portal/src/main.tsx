@@ -5,8 +5,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider } from 'antd';
 import { AuthProvider } from './contexts/AuthContext';
 import { themeConfig } from './theme';
+import { registerNctsChartTheme } from '@ncts/ui';
 import App from './App';
 import './index.css';
+
+// Register NCTS chart theme for @ant-design/charts (G2 under the hood)
+import { G2 } from '@ant-design/charts';
+registerNctsChartTheme(G2 as unknown as { register: (...args: unknown[]) => void });
 
 const queryClient = new QueryClient({
   defaultOptions: {

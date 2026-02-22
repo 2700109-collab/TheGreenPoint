@@ -1,12 +1,24 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
-import type { CreateLabResultDto, PaginatedResponse } from '@ncts/shared-types';
+import type { PaginatedResponse } from '@ncts/shared-types';
+import type { SubmitLabResultDto } from './dto';
+import type { LabResult } from '@prisma/client';
+
+/** Lab result with linked batches */
+interface LabResultWithBatches extends LabResult {
+  batches: Array<{ id: string; batchNumber: string }>;
+}
+
+/** Lab result with batch type info */
+export interface LabResultDetail extends LabResult {
+  batches: Array<{ id: string; batchNumber: string; batchType: string }>;
+}
 
 @Injectable()
 export class LabResultsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(tenantId: string, dto: CreateLabResultDto): Promise<any> {
+  async create(tenantId: string, dto: SubmitLabResultDto): Promise<LabResult> {
     // Verify batch exists and belongs to tenant
     const batch = await this.prisma.batch.findFirst({
       where: { id: dto.batchId, tenantId },
@@ -31,7 +43,7 @@ export class LabResultsService {
           tenantId,
           labName: dto.labName,
           labAccreditationNumber: dto.labAccreditationNumber,
-          testDate: new Date(dto.testDate),
+          testDate: dto.testDate ? new Date(dto.testDate) : new Date(),
           status,
           thcPercent: dto.thcPercent,
           cbdPercent: dto.cbdPercent,
@@ -57,7 +69,7 @@ export class LabResultsService {
     });
   }
 
-  async findByBatch(batchId: string, tenantId?: string): Promise<any> {
+  async findByBatch(batchId: string, tenantId?: string): Promise<LabResult> {
     const batch = await this.prisma.batch.findFirst({
       where: tenantId ? { id: batchId, tenantId } : { id: batchId },
       include: {
@@ -76,7 +88,7 @@ export class LabResultsService {
     return batch.labResult;
   }
 
-  async findAll(tenantId: string, page = 1, limit = 20): Promise<PaginatedResponse<any>> {
+  async findAll(tenantId: string, page = 1, limit = 20): Promise<PaginatedResponse<LabResultWithBatches>> {
     const skip = (page - 1) * limit;
 
     const [data, total] = await Promise.all([
@@ -98,7 +110,7 @@ export class LabResultsService {
     };
   }
 
-  async findOne(id: string, tenantId?: string): Promise<any> {
+  async findOne(id: string, tenantId?: string): Promise<LabResultDetail> {
     const where = tenantId ? { id, tenantId } : { id };
     const labResult = await this.prisma.labResult.findFirst({
       where,

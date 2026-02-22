@@ -1,12 +1,34 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
-import type { CreateTransferDto, AcceptTransferDto, RejectTransferDto, PaginatedResponse } from '@ncts/shared-types';
+import type { Transfer, TransferItem, Batch } from '@prisma/client';
+import type { PaginatedResponse } from '@ncts/shared-types';
+import type { CreateTransferDto, AcceptTransferDto, RejectTransferDto } from './dto';
+
+/** Transfer with nested items and batch info */
+interface TransferWithItems extends Transfer {
+  items: Array<TransferItem & { batch: { id: string; batchNumber: string } }>;
+}
+
+/** Transfer with tenant and items for regulator view */
+interface TransferWithTenantAndItems extends Transfer {
+  tenant: { id: string; name: string; tradingName: string | null };
+  items: Array<TransferItem & { batch: { id: string; batchNumber: string } }>;
+}
+
+/** Detailed transfer with tenant, items, and batch details */
+export interface TransferDetail extends Transfer {
+  tenant: { id: string; name: string; tradingName: string | null };
+  items: Array<TransferItem & { batch: { id: string; batchNumber: string; batchType: string; strainId: string | null } }>;
+}
+
+const DISCREPANCY_THRESHOLD = 0.02; // 2%
 
 @Injectable()
 export class TransfersService {
+  private readonly logger = new Logger(TransfersService.name);
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(tenantId: string, dto: CreateTransferDto): Promise<any> {
+  async create(tenantId: string, dto: CreateTransferDto): Promise<TransferWithItems> {
     // Verify sender facility belongs to tenant
     const senderFacility = await this.prisma.facility.findFirst({
       where: { id: dto.senderFacilityId, tenantId },
@@ -71,7 +93,7 @@ export class TransfersService {
     tenantId: string,
     page = 1,
     limit = 20,
-  ): Promise<PaginatedResponse<any>> {
+  ): Promise<PaginatedResponse<TransferWithItems>> {
     const skip = (page - 1) * limit;
 
     // Show transfers where tenant is sender OR receiver
@@ -103,7 +125,7 @@ export class TransfersService {
     };
   }
 
-  async findAllForRegulator(page = 1, limit = 20): Promise<PaginatedResponse<any>> {
+  async findAllForRegulator(page = 1, limit = 20): Promise<PaginatedResponse<TransferWithTenantAndItems>> {
     const skip = (page - 1) * limit;
 
     const [data, total] = await Promise.all([
@@ -127,7 +149,7 @@ export class TransfersService {
     };
   }
 
-  async findOne(id: string, tenantId?: string): Promise<any> {
+  async findOne(id: string, tenantId?: string): Promise<TransferDetail> {
     const transfer = await this.prisma.transfer.findFirst({
       where: tenantId
         ? { id, OR: [{ senderTenantId: tenantId }, { receiverTenantId: tenantId }] }
@@ -151,7 +173,7 @@ export class TransfersService {
     return transfer;
   }
 
-  async accept(id: string, receiverTenantId: string, dto: AcceptTransferDto): Promise<any> {
+  async accept(id: string, receiverTenantId: string, dto: AcceptTransferDto): Promise<TransferWithItems> {
     const transfer = await this.prisma.transfer.findFirst({
       where: { id, receiverTenantId, status: 'pending' },
       include: { items: true },
@@ -163,11 +185,72 @@ export class TransfersService {
 
     return this.prisma.$transaction(async (tx) => {
       // Update received quantities
-      for (const item of dto.items) {
+      const discrepancies: { transferItemId: string; batchId: string; sent: number; received: number; pct: number }[] = [];
+
+      for (const receivedItem of dto.receivedItems) {
         await tx.transferItem.update({
-          where: { id: item.transferItemId },
-          data: { receivedQuantityGrams: item.receivedQuantityGrams },
+          where: { id: receivedItem.transferItemId },
+          data: { receivedQuantityGrams: receivedItem.receivedQuantityGrams },
         });
+
+        // Discrepancy detection: compare sent vs received
+        const originalItem = transfer.items.find((i) => i.id === receivedItem.transferItemId);
+        if (originalItem) {
+          const sent = Number(originalItem.quantityGrams);
+          const received = receivedItem.receivedQuantityGrams;
+          const diff = Math.abs(sent - received);
+          const pct = sent > 0 ? diff / sent : 0;
+
+          if (pct > DISCREPANCY_THRESHOLD) {
+            discrepancies.push({
+              transferItemId: receivedItem.transferItemId,
+              batchId: originalItem.batchId,
+              sent,
+              received,
+              pct: Math.round(pct * 10000) / 100, // percentage with 2 decimals
+            });
+          }
+        }
+      }
+
+      // If discrepancies found, create ComplianceAlerts
+      if (discrepancies.length > 0) {
+        // Find or create the transfer discrepancy compliance rule
+        let rule = await tx.complianceRule.findFirst({
+          where: { category: 'transfer', name: 'Transfer Weight Discrepancy' },
+        });
+
+        if (!rule) {
+          rule = await tx.complianceRule.create({
+            data: {
+              name: 'Transfer Weight Discrepancy',
+              description: 'Flags transfers where received quantity differs from sent quantity by more than 2%',
+              category: 'transfer',
+              severity: 'warning',
+              evaluationType: 'real_time',
+              ruleDefinition: { threshold: DISCREPANCY_THRESHOLD, metric: 'weight_variance' },
+            },
+          });
+        }
+
+        for (const d of discrepancies) {
+          await tx.complianceAlert.create({
+            data: {
+              ruleId: rule.id,
+              tenantId: transfer.tenantId,
+              severity: d.pct > 10 ? 'critical' : 'warning',
+              alertType: 'transfer_discrepancy',
+              description: `Transfer ${transfer.transferNumber}: Batch ${d.batchId} sent ${d.sent}g but received ${d.received}g (${d.pct}% variance)`,
+              entityType: 'transfer',
+              entityId: transfer.id,
+              status: 'open',
+            },
+          });
+        }
+
+        this.logger.warn(
+          `Transfer ${transfer.transferNumber}: ${discrepancies.length} item(s) with discrepancy >2%`,
+        );
       }
 
       // Mark transfer as accepted
@@ -185,7 +268,7 @@ export class TransfersService {
     });
   }
 
-  async reject(id: string, receiverTenantId: string, dto: RejectTransferDto): Promise<any> {
+  async reject(id: string, receiverTenantId: string, dto: RejectTransferDto): Promise<Transfer> {
     const transfer = await this.prisma.transfer.findFirst({
       where: { id, receiverTenantId, status: 'pending' },
     });

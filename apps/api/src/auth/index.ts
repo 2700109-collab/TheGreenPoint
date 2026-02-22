@@ -1,6 +1,12 @@
 export { AuthModule } from './auth.module';
 export { AuthService } from './auth.service';
-export type { AuthenticatedUser, JwtPayload } from './auth.service';
+export { AuthController } from './auth.controller';
+export type {
+  AuthenticatedUser,
+  JwtPayload,
+  LoginResponse,
+  RegisterResponse,
+} from './auth.service';
 export { JwtAuthGuard } from './guards/jwt-auth.guard';
 export { RolesGuard } from './guards/roles.guard';
 export { TenantGuard } from './guards/tenant.guard';

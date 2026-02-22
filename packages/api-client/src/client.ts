@@ -18,6 +18,14 @@ const BASE_URL = '/api/v1';
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
+    // 401 Unauthorized — clear stale token and redirect to login
+    if (response.status === 401) {
+      localStorage.removeItem('ncts_token');
+      // Only redirect if we're in a browser context and not already on /login
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login?reason=expired';
+      }
+    }
     let body: unknown;
     try {
       body = await response.json();

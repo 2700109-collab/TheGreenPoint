@@ -1,9 +1,17 @@
 import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+// Default dev password — all seed users use this
+const DEV_PASSWORD = 'NctsDevPass123!';
+
 async function seed() {
   console.log('🌱 Seeding NCTS database...');
+
+  // Pre-hash the dev password so all seed users can log in
+  const passwordHash = await bcrypt.hash(DEV_PASSWORD, 12);
+  console.log(`  ℹ️  Dev password for all seed users: ${DEV_PASSWORD}`);
 
   // --- Reference Strains ---
   const strains = await Promise.all([
@@ -128,80 +136,87 @@ async function seed() {
   // --- Users ---
   const adminUser = await prisma.user.upsert({
     where: { email: 'admin@greenfields.co.za' },
-    update: {},
+    update: { passwordHash },
     create: {
       email: 'admin@greenfields.co.za',
       firstName: 'Thabo',
       lastName: 'Mokoena',
       role: 'operator_admin',
       tenantId: tenant1.id,
+      passwordHash,
     },
   });
 
   await prisma.user.upsert({
     where: { email: 'staff@greenfields.co.za' },
-    update: {},
+    update: { passwordHash },
     create: {
       email: 'staff@greenfields.co.za',
       firstName: 'Lindiwe',
       lastName: 'Nkosi',
       role: 'operator_staff',
       tenantId: tenant1.id,
+      passwordHash,
     },
   });
 
   await prisma.user.upsert({
     where: { email: 'admin@capecannabis.co.za' },
-    update: {},
+    update: { passwordHash },
     create: {
       email: 'admin@capecannabis.co.za',
       firstName: 'Pieter',
       lastName: 'van der Merwe',
       role: 'operator_admin',
       tenantId: tenant2.id,
+      passwordHash,
     },
   });
 
   await prisma.user.upsert({
     where: { email: 'admin@limpopogrowers.co.za' },
-    update: {},
+    update: { passwordHash },
     create: {
       email: 'admin@limpopogrowers.co.za',
       firstName: 'Sipho',
       lastName: 'Mabunda',
       role: 'operator_admin',
       tenantId: tenant3.id,
+      passwordHash,
     },
   });
 
   const regulatorUser = await prisma.user.upsert({
     where: { email: 'inspector@sahpra.gov.za' },
-    update: {},
+    update: { passwordHash },
     create: {
       email: 'inspector@sahpra.gov.za',
       firstName: 'Nomsa',
       lastName: 'Dlamini',
       role: 'regulator',
       tenantId: null,
+      passwordHash,
     },
   });
 
   await prisma.user.upsert({
     where: { email: 'lab@sacannabislabs.co.za' },
-    update: {},
+    update: { passwordHash },
     create: {
       email: 'lab@sacannabislabs.co.za',
       firstName: 'Dr. Sarah',
       lastName: 'Botha',
       role: 'lab_technician',
       tenantId: tenant1.id,
+      passwordHash,
     },
   });
 
   console.log('  ✅ Seeded 6 users');
 
   // --- Facilities ---
-  // Clean up zones first to allow re-seeding
+  // Clean up dependent records first, then zones to allow re-seeding
+  await prisma.plant.deleteMany({});
   await prisma.zone.deleteMany({});
 
   const facility1 = await prisma.facility.upsert({
@@ -563,39 +578,252 @@ async function seed() {
 
   console.log('  ✅ Seeded 2 sales');
 
+  // --- Compliance Rules (reference data) ---
+  const complianceRules = await Promise.all([
+    prisma.complianceRule.create({
+      data: {
+        name: 'R001',
+        description: 'Every facility must have at least one active, non-expired permit to operate.',
+        category: 'permit',
+        severity: 'critical',
+        evaluationType: 'scheduled',
+        ruleDefinition: { check: 'facility_has_active_permit', params: {} },
+        thresholds: { expiryWarningDays: 30, expiryGraceDays: 7 },
+        isActive: true,
+      },
+    }),
+    prisma.complianceRule.create({
+      data: {
+        name: 'R002',
+        description: 'All batches must have lab-tested THC below the permitted threshold for their product category.',
+        category: 'lab',
+        severity: 'critical',
+        evaluationType: 'real_time',
+        ruleDefinition: { check: 'thc_below_limit', params: { medicinal_max: 30.0, hemp_max: 0.2 } },
+        isActive: true,
+      },
+    }),
+    prisma.complianceRule.create({
+      data: {
+        name: 'R003',
+        description: 'Declared inventory must match calculated inventory within 2% tolerance.',
+        category: 'inventory',
+        severity: 'warning',
+        evaluationType: 'batch',
+        ruleDefinition: { check: 'inventory_variance', params: { tolerance_percent: 2.0 } },
+        thresholds: { warning: 1.5, critical: 2.0, emergencyPercent: 10.0 },
+        isActive: true,
+      },
+    }),
+    prisma.complianceRule.create({
+      data: {
+        name: 'R004',
+        description: 'Flags transfers that deviate more than 3 standard deviations from historical patterns.',
+        category: 'transfer',
+        severity: 'warning',
+        evaluationType: 'real_time',
+        ruleDefinition: { check: 'transfer_velocity', params: { zScoreThreshold: 3.0 } },
+        isActive: true,
+      },
+    }),
+    prisma.complianceRule.create({
+      data: {
+        name: 'R005',
+        description: 'Detects QR verification scans from locations inconsistent with facility coordinates.',
+        category: 'verification',
+        severity: 'warning',
+        evaluationType: 'batch',
+        ruleDefinition: { check: 'verification_anomaly', params: { maxDistanceKm: 50 } },
+        isActive: true,
+      },
+    }),
+    prisma.complianceRule.create({
+      data: {
+        name: 'R006',
+        description: 'Validates that wet-to-dry weight conversion ratios fall within biologically plausible ranges.',
+        category: 'production',
+        severity: 'warning',
+        evaluationType: 'real_time',
+        ruleDefinition: { check: 'wet_dry_ratio', params: { minRatio: 2.0, maxRatio: 7.0, criticalMin: 1.5, criticalMax: 8.0 } },
+        isActive: true,
+      },
+    }),
+    prisma.complianceRule.create({
+      data: {
+        name: 'R007',
+        description: 'Ensures total facility output does not exceed input plus natural growth variance.',
+        category: 'inventory',
+        severity: 'critical',
+        evaluationType: 'batch',
+        ruleDefinition: { check: 'mass_balance', params: { tolerancePercent: 5.0 } },
+        isActive: true,
+      },
+    }),
+    prisma.complianceRule.create({
+      data: {
+        name: 'R008',
+        description: 'Verifies current plant count and production volumes remain within permit limits.',
+        category: 'production',
+        severity: 'critical',
+        evaluationType: 'real_time',
+        ruleDefinition: { check: 'production_limit', params: { plantCountMultiplier: 10 } },
+        isActive: true,
+      },
+    }),
+    prisma.complianceRule.create({
+      data: {
+        name: 'R009',
+        description: 'Ensures batches are lab-tested within required timeframes; flags untested batches.',
+        category: 'lab',
+        severity: 'warning',
+        evaluationType: 'batch',
+        ruleDefinition: { check: 'lab_result_frequency', params: { maxDaysWithoutTest: 30 } },
+        isActive: true,
+      },
+    }),
+    prisma.complianceRule.create({
+      data: {
+        name: 'R010',
+        description: 'Prevents zone overcrowding by checking plant counts against zone capacity limits.',
+        category: 'production',
+        severity: 'warning',
+        evaluationType: 'real_time',
+        ruleDefinition: { check: 'zone_capacity', params: { warningThreshold: 0.9, criticalThreshold: 1.0 } },
+        isActive: true,
+      },
+    }),
+    prisma.complianceRule.create({
+      data: {
+        name: 'R011',
+        description: 'Monitors whether required periodic reports are submitted on time.',
+        category: 'permit',
+        severity: 'warning',
+        evaluationType: 'scheduled',
+        ruleDefinition: { check: 'reporting_deadline', params: { monthlyDeadlineDays: 5, quarterlyDeadlineDays: 15 } },
+        isActive: true,
+      },
+    }),
+    prisma.complianceRule.create({
+      data: {
+        name: 'R012',
+        description: 'Validates destruction events have required witnesses, photos, and approved methods.',
+        category: 'inventory',
+        severity: 'critical',
+        evaluationType: 'real_time',
+        ruleDefinition: { check: 'destruction_compliance', params: { minWitnesses: 2, requirePhotos: true } },
+        isActive: true,
+      },
+    }),
+    prisma.complianceRule.create({
+      data: {
+        name: 'R013',
+        description: 'Ensures import and export volumes align with INCB quotas and permit allowances.',
+        category: 'transfer',
+        severity: 'critical',
+        evaluationType: 'batch',
+        ruleDefinition: { check: 'import_export_balance', params: { quotaTolerancePercent: 5.0 } },
+        isActive: true,
+      },
+    }),
+    prisma.complianceRule.create({
+      data: {
+        name: 'R014',
+        description: 'Ensures operations match permitted activity types (cultivation, processing, distribution, research).',
+        category: 'permit',
+        severity: 'critical',
+        evaluationType: 'real_time',
+        ruleDefinition: { check: 'permit_activity_scope', params: {} },
+        isActive: true,
+      },
+    }),
+  ]);
+
+  console.log(`  ✅ Seeded ${complianceRules.length} compliance rules`);
+
+  // --- Notifications ---
+  await prisma.notification.create({
+    data: {
+      userId: adminUser.id,
+      type: 'info',
+      channel: 'in_app',
+      title: 'Welcome to NCTS',
+      body: 'Your account has been set up. Please review your facility details and ensure all permits are current.',
+    },
+  });
+
+  console.log('  ✅ Seeded 1 notification');
+
+  // --- Excise Rates (reference data) ---
+  await Promise.all([
+    prisma.exciseRate.create({
+      data: {
+        productCategory: 'dried_flower',
+        ratePerUnit: 3.75,
+        unit: 'gram',
+        effectiveDate: new Date('2026-01-01'),
+        isActive: true,
+      },
+    }),
+    prisma.exciseRate.create({
+      data: {
+        productCategory: 'extract',
+        ratePerUnit: 8.50,
+        unit: 'ml',
+        effectiveDate: new Date('2026-01-01'),
+        isActive: true,
+      },
+    }),
+    prisma.exciseRate.create({
+      data: {
+        productCategory: 'hemp_fiber',
+        ratePerUnit: 0.25,
+        unit: 'gram',
+        effectiveDate: new Date('2026-01-01'),
+        isActive: true,
+      },
+    }),
+  ]);
+
+  console.log('  ✅ Seeded 3 excise rates');
+
   // --- Audit Events (genesis + sample) ---
-  await prisma.auditEvent.deleteMany({});
-  const genesisHash = '0000000000000000000000000000000000000000000000000000000000000000';
+  // FIX (C5): Check if audit events exist before deleting (immutability trigger may be active)
+  const existingAuditCount = await prisma.auditEvent.count();
+  if (existingAuditCount === 0) {
+    const genesisHash = '0000000000000000000000000000000000000000000000000000000000000000';
 
-  await prisma.auditEvent.create({
-    data: {
-      entityType: 'system',
-      entityId: 'genesis',
-      action: 'create',
-      actorId: regulatorUser.id,
-      actorRole: 'regulator',
-      tenantId: null,
-      payload: { message: 'NCTS Audit Chain Initialized' },
-      previousHash: genesisHash,
-      eventHash: 'a1b2c3d4e5f678901234567890abcdef1234567890abcdef1234567890abcdef',
-    },
-  });
+    await prisma.auditEvent.create({
+      data: {
+        entityType: 'system',
+        entityId: 'genesis',
+        action: 'create',
+        actorId: regulatorUser.id,
+        actorRole: 'regulator',
+        tenantId: null,
+        payload: { message: 'NCTS Audit Chain Initialized' },
+        previousHash: genesisHash,
+        eventHash: 'a1b2c3d4e5f678901234567890abcdef1234567890abcdef1234567890abcdef',
+      },
+    });
 
-  await prisma.auditEvent.create({
-    data: {
-      entityType: 'plant',
-      entityId: 'batch-create',
-      action: 'create',
-      actorId: adminUser.id,
-      actorRole: 'operator_admin',
-      tenantId: tenant1.id,
-      payload: { plantCount: 100, strains: ['Durban Poison', 'Swazi Gold', 'Malawi Gold', 'Rooibaard'] },
-      previousHash: 'a1b2c3d4e5f678901234567890abcdef1234567890abcdef1234567890abcdef',
-      eventHash: 'b2c3d4e5f6789012345678901bcdef01234567890abcdef1234567890abcdef12',
-    },
-  });
+    await prisma.auditEvent.create({
+      data: {
+        entityType: 'plant',
+        entityId: 'batch-create',
+        action: 'create',
+        actorId: adminUser.id,
+        actorRole: 'operator_admin',
+        tenantId: tenant1.id,
+        payload: { plantCount: 100, strains: ['Durban Poison', 'Swazi Gold', 'Malawi Gold', 'Rooibaard'] },
+        previousHash: 'a1b2c3d4e5f678901234567890abcdef1234567890abcdef1234567890abcdef',
+        eventHash: 'b2c3d4e5f6789012345678901bcdef01234567890abcdef1234567890abcdef12',
+      },
+    });
 
-  console.log('  ✅ Seeded 2 audit events');
+    console.log('  ✅ Seeded 2 audit events');
+  } else {
+    console.log(`  ⏭️  Skipped audit events (${existingAuditCount} already exist — immutable)`);
+  }
 
   console.log('🌿 NCTS seed complete!');
 }

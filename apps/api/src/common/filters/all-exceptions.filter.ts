@@ -14,12 +14,26 @@ interface ErrorResponse {
   error: string;
   timestamp: string;
   path: string;
-  correlationId?: string;
+  requestId?: string;
 }
 
+/**
+ * Section 9.5 — Global Exception Filter
+ *
+ * Catches all unhandled exceptions and returns structured error responses.
+ * - Includes requestId for request tracing
+ * - Masks internal error details in production (500s)
+ * - Logs full stack trace for 500+ errors
+ */
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
+  /**
+   * RC-912: Evaluated once at construction time. Acceptable since NODE_ENV
+   * doesn't change at runtime. Using ConfigService would require DI registration
+   * (APP_FILTER provider) instead of manual instantiation in main.ts.
+   */
+  private readonly isProduction = process.env.NODE_ENV === 'production';
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
@@ -43,7 +57,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
     } else if (exception instanceof Error) {
       status = HttpStatus.INTERNAL_SERVER_ERROR;
-      message = 'Internal server error';
+      // Don't leak internal error details in production
+      message = this.isProduction
+        ? 'An unexpected error occurred'
+        : exception.message;
       error = 'InternalServerError';
       this.logger.error(
         `Unhandled exception: ${exception.message}`,
@@ -51,13 +68,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
       );
     } else {
       status = HttpStatus.INTERNAL_SERVER_ERROR;
-      message = 'Internal server error';
+      message = 'An unexpected error occurred';
       error = 'UnknownError';
       this.logger.error('Unknown exception thrown', String(exception));
     }
 
-    const correlationId =
-      (request.headers['x-correlation-id'] as string) || request.id;
+    const requestId =
+      ((request as unknown as Record<string, unknown>).requestId as string | undefined) ||
+      (request.headers['x-correlation-id'] as string | undefined) ||
+      request.id;
 
     const errorResponse: ErrorResponse = {
       statusCode: status,
@@ -65,8 +84,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
       error,
       timestamp: new Date().toISOString(),
       path: request.url,
-      correlationId,
+      requestId,
     };
+
+    // Log 500+ errors with full context
+    if (status >= 500) {
+      this.logger.error(
+        `${request.method} ${request.url} → ${status} [requestId=${requestId}]`,
+        exception instanceof Error ? exception.stack : String(exception),
+      );
+    }
 
     response.status(status).send(errorResponse);
   }

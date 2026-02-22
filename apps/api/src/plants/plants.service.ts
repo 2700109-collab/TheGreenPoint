@@ -3,14 +3,10 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
-import type {
-  CreatePlantDto,
-  BatchCreatePlantsDto,
-  UpdatePlantStateDto,
-  PlantFilterDto,
-  PaginatedResponse,
-} from '@ncts/shared-types';
+import type { PaginatedResponse } from '@ncts/shared-types';
+import type { CreatePlantDto, BatchCreatePlantsDto, UpdatePlantStateDto, PlantFilterDto } from './dto';
 import { PlantState } from '@ncts/shared-types';
 
 /**
@@ -58,7 +54,7 @@ export class PlantsService {
         strainId: dto.strainId,
         facilityId: dto.facilityId,
         zoneId: dto.zoneId,
-        plantedDate: new Date(dto.plantedDate),
+        plantedDate: dto.plantedDate ? new Date(dto.plantedDate) : new Date(),
         motherPlantId: dto.motherPlantId || null,
         state: PlantState.SEED,
       },
@@ -101,11 +97,11 @@ export class PlantsService {
   async findAll(
     tenantId: string,
     filters: PlantFilterDto,
-  ): Promise<PaginatedResponse<any>> {
+  ): Promise<PaginatedResponse<Record<string, unknown>>> {
     const { page = 1, limit = 20, state, strainId, facilityId, zoneId, plantedAfter, plantedBefore, sortBy = 'createdAt', sortOrder = 'desc' } = filters;
     const skip = (page - 1) * limit;
 
-    const where: any = { tenantId };
+    const where: Prisma.PlantWhereInput = { tenantId };
     if (state) where.state = state;
     if (strainId) where.strainId = strainId;
     if (facilityId) where.facilityId = facilityId;
@@ -142,11 +138,11 @@ export class PlantsService {
     };
   }
 
-  async findAllForRegulator(filters: PlantFilterDto): Promise<PaginatedResponse<any>> {
+  async findAllForRegulator(filters: PlantFilterDto): Promise<PaginatedResponse<Record<string, unknown>>> {
     const { page = 1, limit = 20, state, strainId, facilityId, sortBy = 'createdAt', sortOrder = 'desc' } = filters;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: Prisma.PlantWhereInput = {};
     if (state) where.state = state;
     if (strainId) where.strainId = strainId;
     if (facilityId) where.facilityId = facilityId;
@@ -208,7 +204,7 @@ export class PlantsService {
       );
     }
 
-    const data: any = { state: dto.state };
+    const data: Prisma.PlantUpdateInput = { state: dto.state };
 
     if (dto.state === PlantState.HARVESTED) {
       data.harvestedDate = new Date();

@@ -1,59 +1,110 @@
+# ╔═══════════════════════════════════════════════════════════════╗
+# ║  NCTS Docker Development Environment                        ║
+# ║  Start with: docker compose up -d                           ║
+# ║  Stop with:  docker compose down                            ║
+# ║  Logs:       docker compose logs -f <service>               ║
+# ║  Status:     docker compose ps                              ║
+# ╚═══════════════════════════════════════════════════════════════╝
+
 services:
-  # PostgreSQL 16 with PostGIS
+  # ── PostgreSQL 16 + PostGIS ─────────────────────────────────
   postgres:
     image: postgis/postgis:16-3.4
     container_name: ncts-postgres
     environment:
+      POSTGRES_USER: ncts_admin
+      POSTGRES_PASSWORD: ncts_dev_password
       POSTGRES_DB: ncts_dev
-      POSTGRES_USER: ncts_user
-      POSTGRES_PASSWORD: ncts_password
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./infrastructure/docker/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./infrastructure/sql/00-extensions.sql:/docker-entrypoint-initdb.d/01-extensions.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ncts_user -d ncts_dev"]
+      test: ['CMD-SHELL', 'pg_isready -U ncts_admin -d ncts_dev']
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - ncts-network
+    restart: unless-stopped
 
-  # Redis 7 — caching, sessions, rate limiting
+  # ── Redis 7 ────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: ncts-redis
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - ncts-network
+    restart: unless-stopped
 
-  # Mailpit — email testing (replaces deprecated Mailhog)
+  # ── Mailpit (dev email) ────────────────────────────────────
   mailpit:
     image: axllent/mailpit:latest
     container_name: ncts-mailpit
     ports:
-      - "1025:1025"  # SMTP
-      - "8025:8025"  # Web UI
-
-  # LocalStack — mock AWS services (S3, SES, EventBridge)
-  localstack:
-    image: localstack/localstack:3
-    container_name: ncts-localstack
+      - '1025:1025'   # SMTP
+      - '8025:8025'   # Web UI
     environment:
-      SERVICES: s3,ses,events
-      DEFAULT_REGION: af-south-1
-      DEBUG: 0
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    networks:
+      - ncts-network
+    restart: unless-stopped
+
+  # ── MinIO (S3-compatible storage) ──────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: ncts-minio
+    environment:
+      MINIO_ROOT_USER: ncts_minio_admin
+      MINIO_ROOT_PASSWORD: ncts_minio_secret
+    command: server /data --console-address ":9001"
     ports:
-      - "4566:4566"    # LocalStack Gateway
+      - '9000:9000'   # S3 API
+      - '9001:9001'   # Console UI
     volumes:
-      - localstack_data:/var/lib/localstack
+      - minio_data:/data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - ncts-network
+    restart: unless-stopped
+
+  # ── MinIO bucket init ──────────────────────────────────────
+  createbuckets:
+    image: minio/mc
+    container_name: ncts-createbuckets
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set minio http://minio:9000 ncts_minio_admin ncts_minio_secret;
+      mc mb minio/ncts-documents --ignore-existing;
+      mc anonymous set download minio/ncts-documents/public;
+      exit 0;
+      "
+    networks:
+      - ncts-network
+
+networks:
+  ncts-network:
+    driver: bridge
+    name: ncts-network
 
 volumes:
   postgres_data:
   redis_data:
-  localstack_data:
+  minio_data:

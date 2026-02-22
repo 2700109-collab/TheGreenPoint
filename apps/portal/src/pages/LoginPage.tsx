@@ -1,106 +1,201 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Form, Input, Button, message, Divider } from 'antd';
-import { LockOutlined, MailOutlined, GlobalOutlined } from '@ant-design/icons';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { Form, Input, Button, Alert, Checkbox, Divider, Space, Typography, message } from 'antd';
+import {
+  LockOutlined,
+  MailOutlined,
+  ExperimentOutlined,
+  BankOutlined,
+} from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
+
+const { Text } = Typography;
+
+const NAVY = '#1B3A5C';
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<'error' | 'warning' | 'info'>('error');
   const { login, user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [form] = Form.useForm();
 
-  // If already logged in, redirect
+  useEffect(() => {
+    const reason = searchParams.get('reason');
+    if (reason === 'expired') {
+      setErrorMsg('Your session has expired. Please sign in again.');
+      setErrorType('info');
+    } else if (reason === 'password-reset') {
+      setErrorMsg('Password reset successfully. Please sign in with your new password.');
+      setErrorType('info');
+    }
+  }, [searchParams]);
+
   if (user) {
     const dest = user.role === 'regulator' || user.role === 'inspector' ? '/admin' : '/operator';
     navigate(dest, { replace: true });
     return null;
   }
 
-  const handleLogin = async (values: { email: string; password: string }) => {
+  const handleLogin = async (values: { email: string; password: string; remember?: boolean }) => {
     setLoading(true);
+    setErrorMsg(null);
     try {
       await login(values.email, values.password);
       message.success('Signed in successfully');
-      // Navigate based on role — will be determined by App after auth state updates
-    } catch (err: any) {
-      message.error(err.message || 'Invalid credentials');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Invalid credentials';
+      if (msg.toLowerCase().includes('locked')) {
+        setErrorType('warning');
+        setErrorMsg('Your account has been locked. Please contact an administrator.');
+      } else {
+        setErrorType('error');
+        setErrorMsg(msg);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const fillDemo = (type: 'operator' | 'admin') => {
-    const creds = type === 'operator'
-      ? { email: 'operator@greenpoint.co.za', password: 'GreenPoint2026!' }
-      : { email: 'admin@sahpra.gov.za', password: 'SAHPRA2026!' };
+    const creds =
+      type === 'operator'
+        ? { email: 'operator@greenpoint.co.za', password: 'GreenPoint2026!' }
+        : { email: 'admin@sahpra.gov.za', password: 'SAHPRA2026!' };
+    form.setFieldsValue(creds);
     handleLogin(creds);
   };
 
   return (
-    <div className="login-page">
-      <div className="login-container">
-        <div className="login-header">
-          <span className="login-coat-of-arms">🌿</span>
-          <div className="login-title">National Cannabis Tracking System</div>
-          <div className="login-subtitle">Republic of South Africa — Seed-to-Sale Digital Infrastructure</div>
-        </div>
+    <>
+      {/* Error / info region with aria-live for screen readers */}
+      <div aria-live="polite" role="status">
+        {errorMsg && (
+          <Alert
+            message={errorMsg}
+            type={errorType}
+            showIcon
+            closable
+            onClose={() => setErrorMsg(null)}
+            style={{ marginBottom: 20 }}
+          />
+        )}
+      </div>
 
-        <div className="login-card">
-          <div style={{ textAlign: 'center', marginBottom: 28 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 600, color: '#1A2332', margin: '0 0 4px' }}>Welcome back</h2>
-            <p style={{ fontSize: 13, color: '#5A6B7F', margin: 0 }}>Sign in to access your portal</p>
-          </div>
+      <div
+        style={{
+          background: '#fff',
+          borderRadius: 16,
+          boxShadow: '0 10px 40px rgba(0,0,0,0.08)',
+          padding: '32px 28px',
+        }}
+      >
 
-          <Form layout="vertical" onFinish={handleLogin} size="large" requiredMark={false}>
-            <Form.Item name="email" rules={[{ required: true, message: 'Enter your email' }]}>
-              <Input prefix={<MailOutlined style={{ color: '#A0A8B4' }} />} placeholder="Email address" />
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleLogin}
+            size="large"
+            requiredMark={false}
+          >
+            <Form.Item
+              name="email"
+              rules={[
+                { required: true, message: 'Please enter a valid email address' },
+                { type: 'email', message: 'Please enter a valid email address' },
+              ]}
+            >
+              <Input
+                prefix={<MailOutlined style={{ color: '#A0A8B4' }} />}
+                placeholder="Email address"
+                autoComplete="email"
+                autoFocus
+                aria-label="Email address"
+                tabIndex={1}
+              />
             </Form.Item>
 
-            <Form.Item name="password" rules={[{ required: true, message: 'Enter your password' }]}>
-              <Input.Password prefix={<LockOutlined style={{ color: '#A0A8B4' }} />} placeholder="Password" />
+            <Form.Item
+              name="password"
+              rules={[{ required: true, message: 'Password is required' }]}
+            >
+              <Input.Password
+                prefix={<LockOutlined style={{ color: '#A0A8B4' }} />}
+                placeholder="Password"
+                autoComplete="current-password"
+                aria-label="Password"
+                tabIndex={2}
+              />
             </Form.Item>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <Form.Item name="remember" valuePropName="checked" noStyle>
+                <Checkbox tabIndex={3}>Remember me</Checkbox>
+              </Form.Item>
+            </div>
 
             <Form.Item style={{ marginBottom: 12 }}>
-              <Button type="primary" htmlType="submit" block loading={loading}
-                style={{ height: 46, fontSize: 15, fontWeight: 600, background: '#003B5C' }}>
+              <Button
+                type="primary"
+                htmlType="submit"
+                block
+                loading={loading}
+                tabIndex={4}
+                style={{ height: 48, fontSize: 15, fontWeight: 600, background: NAVY }}
+              >
                 Sign In
               </Button>
             </Form.Item>
           </Form>
 
-          <Divider plain style={{ fontSize: 12, color: '#A0A8B4' }}>Quick Access Demo</Divider>
-
-          <div style={{ display: 'flex', gap: 10 }}>
-            <Button block onClick={() => fillDemo('operator')} loading={loading}
-              style={{ height: 42, borderColor: '#003B5C', color: '#003B5C', fontWeight: 500 }}>
-              🌿 Operator Portal
-            </Button>
-            <Button block onClick={() => fillDemo('admin')} loading={loading}
-              style={{ height: 42, borderColor: '#7C3AED', color: '#7C3AED', fontWeight: 500 }}>
-              🏛️ Gov Admin Portal
-            </Button>
+          <div style={{ textAlign: 'center' }}>
+            <Link to="/forgot-password" tabIndex={5} style={{ color: NAVY, fontSize: 13 }}>
+              Forgot your password?
+            </Link>
           </div>
         </div>
 
-        <div className="login-demo-info">
-          <h4>Demo Credentials</h4>
-          <p>
-            <strong>Operator:</strong> <code>operator@greenpoint.co.za</code> / <code>GreenPoint2026!</code><br />
-            <strong>Government:</strong> <code>admin@sahpra.gov.za</code> / <code>SAHPRA2026!</code>
-          </p>
+        {/* Demo Access Section */}
+        <div
+          style={{
+            background: '#fff',
+            borderRadius: 16,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.05)',
+            padding: '20px 28px',
+            marginTop: 16,
+          }}
+        >
+          <Divider style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>Demo Access</Divider>
+          <Space direction="vertical" style={{ width: '100%' }} size={10}>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <Button
+                block
+                onClick={() => fillDemo('operator')}
+                loading={loading}
+                icon={<ExperimentOutlined />}
+                style={{ height: 42, borderColor: NAVY, color: NAVY, fontWeight: 500 }}
+              >
+                Operator Portal
+              </Button>
+              <Button
+                block
+                onClick={() => fillDemo('admin')}
+                loading={loading}
+                icon={<BankOutlined />}
+                style={{ height: 42, borderColor: NAVY, color: NAVY, fontWeight: 500 }}
+              >
+                Gov Admin Portal
+              </Button>
+            </div>
+            <Text type="secondary" style={{ fontSize: 12, display: 'block', textAlign: 'center' }}>
+              <strong>Operator:</strong> operator@greenpoint.co.za / GreenPoint2026!
+              <br />
+              <strong>Government:</strong> admin@sahpra.gov.za / SAHPRA2026!
+            </Text>
+          </Space>
         </div>
-
-        <div style={{ textAlign: 'center', marginTop: 20 }}>
-          <Button type="link" icon={<GlobalOutlined />} onClick={() => navigate('/verify')}
-            style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
-            Access Public Verification Portal
-          </Button>
-        </div>
-
-        <div className="login-footer">
-          © 2026 National Cannabis Tracking System — Republic of South Africa
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

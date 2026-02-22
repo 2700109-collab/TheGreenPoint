@@ -4,6 +4,8 @@
 
 /** Roles within the NCTS platform */
 export enum UserRole {
+  /** System-wide super administrator */
+  SUPER_ADMIN = 'super_admin',
   /** SAHPRA, DALRRD, DTIC, SARS officials */
   REGULATOR = 'regulator',
   /** Field inspectors */
@@ -14,6 +16,8 @@ export enum UserRole {
   OPERATOR_STAFF = 'operator_staff',
   /** Accredited laboratory technician */
   LAB_TECHNICIAN = 'lab_technician',
+  /** External auditors (read-only system-wide) */
+  AUDITOR = 'auditor',
   /** Public verification user */
   PUBLIC = 'public',
 }

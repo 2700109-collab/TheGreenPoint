@@ -8,13 +8,21 @@ import { AuthenticatedUser } from '../auth.service';
 
 /**
  * TenantGuard ensures that the authenticated user has a valid tenantId.
- * Regulators/admins are exempt (they access cross-tenant data).
+ * System-wide roles (regulator, inspector, super_admin, auditor) are exempt.
  * 
  * Also sets the tenant context for RLS-based database queries.
+ *
+ * Section 9.4 — RBAC Matrix alignment:
+ * System-wide roles can access any tenant, operator roles are scoped.
  */
 @Injectable()
 export class TenantGuard implements CanActivate {
-  private readonly EXEMPT_ROLES = ['regulator', 'inspector', 'admin'];
+  private readonly SYSTEM_WIDE_ROLES = [
+    'super_admin',
+    'regulator',
+    'inspector',
+    'auditor',
+  ];
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
@@ -24,8 +32,8 @@ export class TenantGuard implements CanActivate {
       throw new ForbiddenException('Authentication required');
     }
 
-    // Regulators/inspectors/admins can access cross-tenant data
-    if (this.EXEMPT_ROLES.includes(user.role)) {
+    // System-wide roles can access cross-tenant data
+    if (this.SYSTEM_WIDE_ROLES.includes(user.role)) {
       return true;
     }
 
@@ -33,6 +41,15 @@ export class TenantGuard implements CanActivate {
     if (!user.tenantId) {
       throw new ForbiddenException(
         'User is not associated with any tenant organization',
+      );
+    }
+
+    // Verify tenantId in params/query matches JWT tenant (prevent cross-tenant access)
+    const params = request.params;
+    const requestedTenant = params?.tenantId || request.query?.tenantId;
+    if (requestedTenant && requestedTenant !== user.tenantId) {
+      throw new ForbiddenException(
+        'Access denied: cannot access data for another tenant',
       );
     }
 

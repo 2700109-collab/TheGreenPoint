@@ -15,6 +15,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { FacilitiesService } from './facilities.service';
 import { JwtAuthGuard, TenantGuard, RolesGuard, Roles, CurrentUser, TenantId } from '../auth';
 import type { AuthenticatedUser } from '../auth';
+import { CreateFacilityDto, UpdateFacilityDto, CreateZoneDto } from './dto';
 
 @ApiTags('facilities')
 @ApiBearerAuth()
@@ -26,7 +27,7 @@ export class FacilitiesController {
   @UseGuards(JwtAuthGuard, RolesGuard, TenantGuard)
   @Roles('operator_admin')
   @ApiOperation({ summary: 'Register a new facility' })
-  create(@TenantId() tenantId: string, @Body() dto: any): Promise<any> {
+  create(@TenantId() tenantId: string, @Body() dto: CreateFacilityDto) {
     return this.facilitiesService.create(tenantId, dto);
   }
 
@@ -54,7 +55,7 @@ export class FacilitiesController {
   findOne(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser,
-  ): Promise<any> {
+  ) {
     const tenantId = ['regulator', 'inspector', 'admin'].includes(user.role)
       ? undefined
       : user.tenantId;
@@ -68,8 +69,8 @@ export class FacilitiesController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @TenantId() tenantId: string,
-    @Body() dto: any,
-  ): Promise<any> {
+    @Body() dto: UpdateFacilityDto,
+  ) {
     return this.facilitiesService.update(id, tenantId, dto);
   }
 
@@ -80,7 +81,7 @@ export class FacilitiesController {
   createZone(
     @Param('id', ParseUUIDPipe) facilityId: string,
     @TenantId() tenantId: string,
-    @Body() dto: { name: string; capacity: number },
+    @Body() dto: CreateZoneDto,
   ) {
     return this.facilitiesService.createZone(facilityId, tenantId, dto);
   }

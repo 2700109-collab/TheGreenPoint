@@ -7,9 +7,7 @@ import {
 } from '@nestjs/common';
 import { Observable, tap } from 'rxjs';
 import { FastifyRequest } from 'fastify';
-import { PrismaService } from '../../database/prisma.service';
-import { computeEventHash, GENESIS_HASH } from '@ncts/audit-lib';
-import { randomUUID } from 'crypto';
+import { AuditService } from '../../audit/audit.service';
 
 /**
  * Map HTTP methods to audit actions.
@@ -31,7 +29,7 @@ const METHOD_ACTION_MAP: Record<string, string> = {
 export class AuditInterceptor implements NestInterceptor {
   private readonly logger = new Logger(AuditInterceptor.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly auditService: AuditService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const request = context.switchToHttp().getRequest<FastifyRequest>();
@@ -43,7 +41,7 @@ export class AuditInterceptor implements NestInterceptor {
     }
 
     const action = METHOD_ACTION_MAP[method]!;
-    const user = (request as any).user;
+    const user = (request as unknown as Record<string, unknown>).user as { id?: string; role?: string; tenantId?: string; email?: string } | undefined;
     const url = request.url;
 
     return next.handle().pipe(
@@ -71,68 +69,39 @@ export class AuditInterceptor implements NestInterceptor {
   private async createAuditEvent(params: {
     action: string;
     url: string;
-    user: any;
+    user: { id?: string; role?: string; tenantId?: string; email?: string } | undefined;
     request: FastifyRequest;
     responseBody: unknown;
   }) {
     const { action, url, user, request, responseBody } = params;
 
     // Extract entity type and ID from URL
-    // e.g., /api/v1/facilities/abc-123 → entityType: 'facility', entityId: 'abc-123'
     const { entityType, entityId } = this.parseEntityFromUrl(url);
 
-    // Get the previous hash for chain linking
-    const previousEvent = await this.prisma.auditEvent.findFirst({
-      orderBy: { sequenceNumber: 'desc' },
-      select: { eventHash: true },
-    });
-    const previousHash = previousEvent?.eventHash || GENESIS_HASH;
-
-    const eventId = randomUUID();
-    const createdAt = new Date().toISOString();
-
-    const payload = {
-      method: request.method,
-      url,
-      body: request.body || {},
-      responseId:
-        responseBody && typeof responseBody === 'object'
-          ? (responseBody as any).id
-          : undefined,
-    };
-
-    const eventHash = computeEventHash({
-      id: eventId,
+    await this.auditService.log({
+      action,
       entityType,
       entityId,
-      action,
-      actorId: user?.id || 'anonymous',
-      payload,
-      previousHash,
-      createdAt,
-    });
-
-    await this.prisma.auditEvent.create({
-      data: {
-        id: eventId,
-        entityType,
-        entityId,
-        action,
-        actorId: user?.id || 'anonymous',
-        actorRole: user?.role || 'anonymous',
-        tenantId: user?.tenantId || null,
-        payload,
-        previousHash,
-        eventHash,
-        ipAddress: request.ip,
-        userAgent: request.headers['user-agent'] || null,
-        gpsLatitude: request.headers['x-gps-latitude']
-          ? parseFloat(request.headers['x-gps-latitude'] as string)
-          : null,
-        gpsLongitude: request.headers['x-gps-longitude']
-          ? parseFloat(request.headers['x-gps-longitude'] as string)
-          : null,
+      userId: user?.id || 'anonymous',
+      userRole: user?.role || 'anonymous',
+      tenantId: user?.tenantId || null,
+      metadata: {
+        method: request.method,
+        url,
+        body: request.body || {},
+        responseId:
+          responseBody && typeof responseBody === 'object'
+            ? (responseBody as Record<string, unknown>).id
+            : undefined,
       },
+      ipAddress: request.ip,
+      userAgent: request.headers['user-agent'] || undefined,
+      gpsLatitude: request.headers['x-gps-latitude']
+        ? parseFloat(request.headers['x-gps-latitude'] as string)
+        : undefined,
+      gpsLongitude: request.headers['x-gps-longitude']
+        ? parseFloat(request.headers['x-gps-longitude'] as string)
+        : undefined,
     });
 
     this.logger.debug(

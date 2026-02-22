@@ -6,6 +6,9 @@ export const colors = {
   gold: '#D4A843',
   green: '#007A4D',
   red: '#C8102E',
+  success: '#059669',
+  warning: '#D97706',
+  danger: '#DC2626',
   bg: '#F0F2F5',
   card: '#FFFFFF',
   text: '#1A2332',
@@ -17,11 +20,11 @@ export const colors = {
 export const themeConfig: ThemeConfig = {
   token: {
     colorPrimary: colors.navy,
-    colorSuccess: '#059669',
-    colorWarning: '#D97706',
+    colorSuccess: colors.success,
+    colorWarning: colors.warning,
     colorError: colors.red,
     colorInfo: colors.navy,
-    borderRadius: 8,
+    borderRadius: 6,
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     fontSize: 14,
     colorBgLayout: colors.bg,
@@ -43,7 +46,7 @@ export const themeConfig: ThemeConfig = {
       darkItemSelectedBg: 'rgba(255,255,255,0.08)',
       darkItemHoverBg: 'rgba(255,255,255,0.04)',
       darkItemSelectedColor: colors.gold,
-      itemBorderRadius: 8,
+      itemBorderRadius: 6,
       iconSize: 16,
     },
     Table: {
@@ -53,7 +56,7 @@ export const themeConfig: ThemeConfig = {
       rowHoverBg: '#FAFBFC',
     },
     Card: {
-      borderRadiusLG: 12,
+      borderRadiusLG: 8,
     },
     Button: {
       primaryShadow: 'none',
@@ -61,13 +64,16 @@ export const themeConfig: ThemeConfig = {
       fontWeight: 500,
     },
     Tag: {
-      borderRadiusSM: 6,
+      borderRadiusSM: 4,
     },
     Input: {
       controlHeight: 42,
     },
     Select: {
       controlHeight: 42,
+    },
+    Breadcrumb: {
+      fontSize: 13,
     },
   },
 };

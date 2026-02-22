@@ -14,6 +14,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { SalesService } from './sales.service';
 import { JwtAuthGuard, RolesGuard, TenantGuard, Roles, CurrentUser, TenantId } from '../auth';
 import type { AuthenticatedUser } from '../auth';
+import { CreateSaleDto, SalesSummaryQueryDto } from './dto';
 
 @ApiTags('sales')
 @ApiBearerAuth()
@@ -25,8 +26,20 @@ export class SalesController {
   @UseGuards(JwtAuthGuard, RolesGuard, TenantGuard)
   @Roles('operator_admin', 'operator_staff')
   @ApiOperation({ summary: 'Record a retail sale' })
-  create(@TenantId() tenantId: string, @Body() dto: any): Promise<any> {
+  create(@TenantId() tenantId: string, @Body() dto: CreateSaleDto) {
     return this.salesService.create(tenantId, dto);
+  }
+
+  @Get('summary')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('operator_admin', 'operator_staff', 'regulator', 'inspector')
+  @ApiOperation({ summary: 'Get sales summary for a period' })
+  getSummary(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: SalesSummaryQueryDto,
+  ) {
+    const tenantId = ['regulator', 'inspector'].includes(user.role) ? undefined : user.tenantId;
+    return this.salesService.getSummary(tenantId, query);
   }
 
   @Get()
@@ -59,7 +72,7 @@ export class SalesController {
   findOne(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser,
-  ): Promise<any> {
+  ) {
     const tenantId = ['regulator', 'inspector'].includes(user.role) ? undefined : user.tenantId;
     return this.salesService.findOne(id, tenantId);
   }

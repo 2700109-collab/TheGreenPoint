@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- NCTS Shield Icon — South African green/gold/blue -->
+  <rect width="512" height="512" rx="96" fill="#1B3A5C"/>
+  <!-- Shield outline -->
+  <path d="M256 72c0 0-120 48-156 48v180c0 72 60 132 156 168 96-36 156-96 156-168V120C376 120 256 72 256 72z" fill="#007A4D" stroke="#FFB81C" stroke-width="8"/>
+  <!-- Inner shield highlight -->
+  <path d="M256 104c0 0-96 40-128 40v152c0 60 48 112 128 144 80-32 128-84 128-144V144C352 144 256 104 256 104z" fill="#1B3A5C"/>
+  <!-- Cannabis leaf simplified (5 pointed leaf shape) -->
+  <g transform="translate(256,264)" fill="#007A4D">
+    <!-- Center vein -->
+    <rect x="-3" y="-80" width="6" height="140" rx="3"/>
+    <!-- Top leaf -->
+    <ellipse cx="0" cy="-60" rx="16" ry="48"/>
+    <!-- Upper left -->
+    <ellipse cx="-32" cy="-36" rx="14" ry="40" transform="rotate(25,-32,-36)"/>
+    <!-- Upper right -->
+    <ellipse cx="32" cy="-36" rx="14" ry="40" transform="rotate(-25,32,-36)"/>
+    <!-- Lower left -->
+    <ellipse cx="-44" cy="-4" rx="12" ry="32" transform="rotate(50,-44,-4)"/>
+    <!-- Lower right -->
+    <ellipse cx="44" cy="-4" rx="12" ry="32" transform="rotate(-50,44,-4)"/>
+    <!-- Stem -->
+    <rect x="-2" y="48" width="4" height="32" rx="2"/>
+  </g>
+  <!-- NCTS text -->
+  <text x="256" y="400" text-anchor="middle" fill="#FFB81C" font-family="Inter, Arial, sans-serif" font-weight="700" font-size="56">NCTS</text>
+</svg>

@@ -7,7 +7,9 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./theme": "./src/theme/index.ts"
+    "./theme": "./src/theme/index.ts",
+    "./icons": "./src/icons/index.ts",
+    "./tokens/cssProperties": "./src/tokens/cssProperties.ts"
   },
   "scripts": {
     "build": "echo 'Source-only package — no build step'",
@@ -16,7 +18,9 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
+    "@ant-design/pro-components": "^2.8.0",
     "antd": "^5.23.0",
+    "lucide-react": "^0.460.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

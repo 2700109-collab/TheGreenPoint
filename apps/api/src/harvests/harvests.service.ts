@@ -3,9 +3,21 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import { PlantState, BatchType } from '@ncts/shared-types';
-import type { CreateHarvestDto } from '@ncts/shared-types';
+import type { CreateHarvestDto } from './dto';
+import type { HarvestFilterDto } from './dto';
+import type { Harvest, Batch, LabResult } from '@prisma/client';
+
+/** Detailed harvest with batch (including strain and lab result) and facility info */
+interface HarvestDetail extends Harvest {
+  batch: Batch & {
+    strain: { id: string; name: string } | null;
+    labResult: LabResult | null;
+  };
+  facility: { id: string; name: string };
+}
 
 @Injectable()
 export class HarvestsService {
@@ -65,7 +77,7 @@ export class HarvestsService {
           plantCount: dto.plantIds.length,
           wetWeightGrams: dto.wetWeightGrams,
           dryWeightGrams: dto.dryWeightGrams || null,
-          createdDate: new Date(dto.harvestDate),
+          createdDate: dto.harvestDate ? new Date(dto.harvestDate) : new Date(),
         },
       });
 
@@ -75,7 +87,7 @@ export class HarvestsService {
           tenantId,
           batchId: batch.id,
           facilityId: dto.facilityId,
-          harvestDate: new Date(dto.harvestDate),
+          harvestDate: dto.harvestDate ? new Date(dto.harvestDate) : new Date(),
           wetWeightGrams: dto.wetWeightGrams,
           dryWeightGrams: dto.dryWeightGrams || null,
           plantIds: dto.plantIds,
@@ -92,7 +104,7 @@ export class HarvestsService {
         where: { id: { in: dto.plantIds } },
         data: {
           state: PlantState.HARVESTED,
-          harvestedDate: new Date(dto.harvestDate),
+          harvestedDate: dto.harvestDate ? new Date(dto.harvestDate) : new Date(),
           batchId: batch.id,
         },
       });
@@ -101,7 +113,45 @@ export class HarvestsService {
     });
   }
 
-  async findOne(id: string, tenantId?: string): Promise<any> {
+  async findAll(tenantId: string | undefined, query: HarvestFilterDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.HarvestWhereInput = {};
+    if (tenantId) where.tenantId = tenantId;
+    if (query.facilityId) where.facilityId = query.facilityId;
+    if (query.harvestedAfter || query.harvestedBefore) {
+      where.harvestDate = {};
+      if (query.harvestedAfter) where.harvestDate.gte = new Date(query.harvestedAfter);
+      if (query.harvestedBefore) where.harvestDate.lte = new Date(query.harvestedBefore);
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.harvest.findMany({
+        where,
+        include: {
+          batch: {
+            include: {
+              strain: { select: { id: true, name: true } },
+            },
+          },
+          facility: { select: { id: true, name: true } },
+        },
+        skip,
+        take: limit,
+        orderBy: { harvestDate: 'desc' },
+      }),
+      this.prisma.harvest.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  async findOne(id: string, tenantId?: string): Promise<HarvestDetail> {
     const where = tenantId ? { id, tenantId } : { id };
     const harvest = await this.prisma.harvest.findFirst({
       where,

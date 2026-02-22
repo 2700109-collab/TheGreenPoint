@@ -18,10 +18,11 @@ The **National Cannabis Tracking System (NCTS)** is a cloud-based, multi-tenant 
 ## Tech Stack
 
 - **Monorepo:** Turborepo + pnpm
-- **Backend:** NestJS (Fastify) + PostgreSQL 16 + PostGIS
+- **Backend:** NestJS (Fastify) + PostgreSQL 17 (Neon serverless)
 - **Frontend:** React 19 + Ant Design 5 + TypeScript
-- **ORM:** Prisma
-- **Auth:** AWS Cognito (af-south-1)
+- **ORM:** Prisma 6
+- **Database:** Neon (serverless PostgreSQL) — aws-eu-central-1
+- **Deployment:** Vercel (frontend + serverless API)
 - **Testing:** Vitest + Playwright + k6
 
 ## Getting Started
@@ -30,7 +31,7 @@ The **National Cannabis Tracking System (NCTS)** is a cloud-based, multi-tenant 
 
 - Node.js ≥ 20
 - pnpm ≥ 10
-- Docker & Docker Compose (for PostgreSQL & Redis)
+- Neon CLI (`npm i -g neonctl`) — for database management
 
 ### Setup
 
@@ -39,8 +40,9 @@ The **National Cannabis Tracking System (NCTS)** is a cloud-based, multi-tenant 
 cd ncts
 pnpm install
 
-# Start databases
-docker compose up -d
+# Database is already provisioned on Neon.
+# To re-run migrations + seed:
+.\infrastructure\scripts\setup-database.ps1
 
 # Run all apps in dev mode
 pnpm dev
@@ -51,8 +53,8 @@ pnpm dev
 - API: http://localhost:3000
 - Swagger: http://localhost:3000/api/docs
 - Operator Portal: http://localhost:5173
-- Regulatory Dashboard: http://localhost:5174
 - Verification: http://localhost:5175
+- Prisma Studio: `cd packages/database && npx prisma studio`
 
 ## Project Structure
 
@@ -73,8 +75,9 @@ ncts/
 │   ├── eslint-config/ # Shared ESLint config
 │   └── tsconfig/      # Shared TypeScript configs
 ├── infrastructure/
-│   ├── terraform/
-│   └── docker/
+│   ├── sql/           # Post-migration SQL (RLS, sequences, partitioning, views)
+│   ├── scripts/       # Setup & utility scripts
+│   └── terraform/
 └── .github/workflows/
 ```
 

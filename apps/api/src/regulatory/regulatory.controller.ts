@@ -11,12 +11,13 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { RegulatoryService } from './regulatory.service';
-import { JwtAuthGuard, RolesGuard, Roles } from '../auth';
+import { JwtAuthGuard, RolesGuard, Roles, CurrentUser, AuthenticatedUser } from '../auth';
+import { UpdatePermitStatusDto } from './dto';
 
 @ApiTags('regulatory')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('regulator', 'inspector')
+@Roles('regulator', 'inspector', 'super_admin')
 @Controller({ path: 'regulatory', version: '1' })
 export class RegulatoryController {
   constructor(private readonly regulatoryService: RegulatoryService) {}
@@ -70,9 +71,10 @@ export class RegulatoryController {
   @Roles('regulator')
   updatePermitStatus(
     @Param('id') id: string,
-    @Body() body: { status: string; notes?: string },
+    @Body() dto: UpdatePermitStatusDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.regulatoryService.updatePermitStatus(id, body.status, body.notes);
+    return this.regulatoryService.updatePermitStatus(id, dto.status, dto.notes, user?.id, user?.role);
   }
 
   @Get('compliance/alerts')
@@ -84,5 +86,80 @@ export class RegulatoryController {
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
     return this.regulatoryService.getComplianceAlerts(page, limit);
+  }
+
+  // =========================================================================
+  // Section 7.4 — Regulatory Dashboard API Enhancements
+  // =========================================================================
+
+  @Get('dashboard/kpis')
+  @ApiOperation({ summary: 'Get cached KPIs for the national dashboard' })
+  getKpis() {
+    return this.regulatoryService.getKpis();
+  }
+
+  @Get('dashboard/compliance-overview')
+  @ApiOperation({ summary: 'Get compliance overview — alert breakdown by status and severity' })
+  getComplianceOverview() {
+    return this.regulatoryService.getComplianceOverview();
+  }
+
+  @Get('dashboard/alert-summary')
+  @ApiOperation({ summary: 'Get alert summary — counts by type and severity' })
+  getAlertSummary() {
+    return this.regulatoryService.getAlertSummary();
+  }
+
+  @Get('dashboard/inspection-calendar')
+  @ApiOperation({ summary: 'Get inspection calendar with upcoming/overdue inspections' })
+  @ApiQuery({ name: 'from', required: false, type: String })
+  @ApiQuery({ name: 'to', required: false, type: String })
+  getInspectionCalendar(
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.regulatoryService.getInspectionCalendar(
+      from ? new Date(from) : undefined,
+      to ? new Date(to) : undefined,
+    );
+  }
+
+  @Get('dashboard/production-trends')
+  @ApiOperation({ summary: 'Get production trends — plants, harvests, batches, destruction' })
+  @ApiQuery({ name: 'months', required: false, type: Number })
+  getProductionTrends(
+    @Query('months', new DefaultValuePipe(12), ParseIntPipe) months: number,
+  ) {
+    return this.regulatoryService.getProductionTrends(months);
+  }
+
+  @Get('dashboard/geographic')
+  @ApiOperation({ summary: 'Get geographic summary — province-level aggregation' })
+  getGeographicSummary() {
+    return this.regulatoryService.getGeographicSummary();
+  }
+
+  @Get('operators/:tenantId/drill-down')
+  @ApiOperation({ summary: 'Get detailed operator drill-down by tenant ID' })
+  getOperatorDrillDown(@Param('tenantId') tenantId: string) {
+    return this.regulatoryService.getOperatorDrillDown(tenantId);
+  }
+
+  @Get('reports/national-summary')
+  @ApiOperation({ summary: 'Get national summary — system-wide high-level stats' })
+  getNationalSummary() {
+    return this.regulatoryService.getNationalSummary();
+  }
+
+  @Get('dashboard/municipal-summary')
+  @ApiOperation({ summary: 'Get municipal summary — province-level license stats' })
+  getMunicipalSummary() {
+    return this.regulatoryService.getMunicipalSummary();
+  }
+
+  @Get('dashboard/municipal/:municipalityCode')
+  @ApiOperation({ summary: 'Get drill-down for a specific municipality' })
+  getMunicipalDrillDown(@Param('municipalityCode') municipalityCode: string) {
+    return this.regulatoryService.getMunicipalDrillDown(municipalityCode);
   }
 }

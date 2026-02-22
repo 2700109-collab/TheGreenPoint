@@ -11,9 +11,11 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
-import { LabResultsService } from './lab-results.service';
+import { LabResultsService, type LabResultDetail } from './lab-results.service';
+import type { LabResult } from '@prisma/client';
 import { JwtAuthGuard, RolesGuard, TenantGuard, Roles, CurrentUser, TenantId } from '../auth';
 import type { AuthenticatedUser } from '../auth';
+import { SubmitLabResultDto } from './dto';
 
 @ApiTags('lab-results')
 @ApiBearerAuth()
@@ -25,7 +27,7 @@ export class LabResultsController {
   @UseGuards(JwtAuthGuard, RolesGuard, TenantGuard)
   @Roles('lab_technician', 'operator_admin')
   @ApiOperation({ summary: 'Submit Certificate of Analysis (CoA)' })
-  create(@TenantId() tenantId: string, @Body() dto: any): Promise<any> {
+  create(@TenantId() tenantId: string, @Body() dto: SubmitLabResultDto) {
     return this.labResultsService.create(tenantId, dto);
   }
 
@@ -50,7 +52,7 @@ export class LabResultsController {
   findOne(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser,
-  ): Promise<any> {
+  ): Promise<LabResultDetail> {
     const tenantId = ['regulator', 'inspector'].includes(user.role) ? undefined : user.tenantId;
     return this.labResultsService.findOne(id, tenantId);
   }
@@ -62,7 +64,7 @@ export class LabResultsController {
   findByBatch(
     @Param('batchId', ParseUUIDPipe) batchId: string,
     @CurrentUser() user: AuthenticatedUser,
-  ): Promise<any> {
+  ): Promise<LabResult> {
     const tenantId = ['regulator', 'inspector'].includes(user.role) ? undefined : user.tenantId;
     return this.labResultsService.findByBatch(batchId, tenantId);
   }

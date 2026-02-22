@@ -1,0 +1,98 @@
+# ═══════════════════════════════════════════════════════════════
+# NCTS Database Migration Pipeline
+# Runs Prisma migrations against staging or production databases
+# Triggered manually or on push to main/develop with schema changes
+# ═══════════════════════════════════════════════════════════════
+name: Database Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      dry-run:
+        description: 'Dry run (show SQL without executing)'
+        required: false
+        type: boolean
+        default: true
+  push:
+    branches: [main, develop]
+    paths:
+      - 'packages/database/prisma/**'
+
+concurrency:
+  group: db-migrate-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production' || 'staging') }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '10'
+
+jobs:
+  migrate:
+    name: Run Migrations
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production' || 'staging') }}
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: af-south-1
+
+      - name: Get Database URL from Secrets Manager
+        id: db-secret
+        run: |
+          DB_URL=$(aws secretsmanager get-secret-value \
+            --secret-id ncts/${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production' || 'staging') }}/database-url \
+            --query SecretString --output text)
+          echo "::add-mask::$DB_URL"
+          echo "DATABASE_URL=$DB_URL" >> $GITHUB_ENV
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @ncts/database exec prisma generate
+
+      - name: Show Migration Status
+        run: pnpm --filter @ncts/database exec prisma migrate status
+
+      - name: Dry Run — Show Pending SQL
+        if: github.event.inputs.dry-run == 'true' || github.event_name == 'push'
+        run: |
+          echo "📋 Pending migrations:"
+          pnpm --filter @ncts/database exec prisma migrate diff \
+            --from-migrations ./packages/database/prisma/migrations \
+            --to-schema-datamodel ./packages/database/prisma/schema.prisma \
+            --script || echo "No pending migrations"
+
+      - name: Apply Migrations
+        if: github.event.inputs.dry-run != 'true'
+        run: |
+          echo "🚀 Applying migrations to ${{ github.event.inputs.environment }}..."
+          pnpm --filter @ncts/database exec prisma migrate deploy
+          echo "✅ Migrations applied successfully"
+
+      - name: Verify Migration
+        if: github.event.inputs.dry-run != 'true'
+        run: pnpm --filter @ncts/database exec prisma migrate status

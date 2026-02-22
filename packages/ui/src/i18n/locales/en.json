@@ -1,0 +1,123 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "print": "Print",
+    "loading": "Loading...",
+    "noResults": "No results found",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "plants": "Plant Management",
+    "facilities": "Facilities",
+    "harvests": "Harvests",
+    "labResults": "Lab Results",
+    "transfers": "Transfers",
+    "sales": "Sales",
+    "compliance": "Compliance",
+    "permits": "Permits & Licenses",
+    "operators": "Operators",
+    "reports": "Reports",
+    "audit": "Audit Log",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "activePlants": "Active Plants",
+    "pendingTransfers": "Pending Transfers",
+    "monthlySales": "Monthly Sales",
+    "complianceScore": "Compliance Score",
+    "recentActivity": "Recent Activity",
+    "quickActions": "Quick Actions"
+  },
+  "plants": {
+    "title": "Plant Management",
+    "register": "Register Plant",
+    "trackingId": "Tracking ID",
+    "strain": "Strain",
+    "stage": "Stage",
+    "facility": "Facility",
+    "plantedDate": "Planted Date",
+    "stages": {
+      "seed": "Seed",
+      "seedling": "Seedling",
+      "vegetative": "Vegetative",
+      "flowering": "Flowering",
+      "harvested": "Harvested",
+      "destroyed": "Destroyed"
+    },
+    "emptyState": {
+      "title": "No plants registered",
+      "description": "Register your first plant to begin tracking its lifecycle."
+    },
+    "count_one": "{{count}} plant",
+    "count_other": "{{count}} plants"
+  },
+  "transfers": {
+    "title": "Transfers",
+    "create": "Create Transfer",
+    "incoming": "Incoming",
+    "outgoing": "Outgoing",
+    "statuses": {
+      "draft": "Draft",
+      "initiated": "Initiated",
+      "dispatched": "Dispatched",
+      "inTransit": "In Transit",
+      "received": "Received",
+      "verified": "Verified",
+      "rejected": "Rejected",
+      "cancelled": "Cancelled"
+    },
+    "count_one": "{{count}} transfer",
+    "count_other": "{{count}} transfers"
+  },
+  "verify": {
+    "title": "Verify Cannabis Product",
+    "subtitle": "Scan a QR code or enter a tracking ID to verify product authenticity.",
+    "inputPlaceholder": "Enter Tracking ID (e.g., PLT-20250106-ABC)",
+    "verifyButton": "Verify Product",
+    "scanQr": "Scan QR Code",
+    "verified": "VERIFIED",
+    "verifiedMessage": "This product has been verified by the National Cannabis Tracking System.",
+    "notVerified": "NOT VERIFIED",
+    "notVerifiedMessage": "This tracking ID could not be verified. This product may be counterfeit or unregistered."
+  },
+  "masthead": {
+    "governmentName": "Republic of South Africa",
+    "systemName": "Official Cannabis Tracking System"
+  },
+  "footer": {
+    "about": "About NCTS",
+    "legal": "Legal",
+    "contact": "Contact",
+    "copyright": "© {{year}} Republic of South Africa. Department of Health. All rights reserved.",
+    "popiaNotice": "POPIA Notice",
+    "paiaManual": "PAIA Manual",
+    "termsOfUse": "Terms of Use",
+    "accessibility": "Accessibility",
+    "cookiePolicy": "Cookie Policy"
+  },
+  "errors": {
+    "notFound": "Page Not Found",
+    "notFoundMessage": "The page you're looking for doesn't exist or has been moved.",
+    "serverError": "Something Went Wrong",
+    "serverErrorMessage": "We're experiencing technical difficulties. Please try again.",
+    "networkError": "Unable to load data. Check your connection and try again.",
+    "permissionDenied": "You don't have permission to access this page.",
+    "sessionExpired": "Your session has expired. Redirecting to login..."
+  },
+  "offline": {
+    "banner": "You're offline — changes will sync when reconnected",
+    "pendingChanges": "{{count}} pending changes"
+  }
+}

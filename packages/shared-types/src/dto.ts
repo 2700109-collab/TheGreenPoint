@@ -197,17 +197,24 @@ export interface DashboardActivityItem {
 // ---------- Verification DTOs ----------
 
 export interface ProductVerificationDto {
+  valid: boolean;
   trackingId: string;
   productName: string;
   strain: string;
   operatorName: string;
   batchNumber: string;
+  entityType?: string;
   labResult: {
     status: string;
     thcPercent: number;
     cbdPercent: number;
     testDate: string;
     labName: string;
+    /** Section 7.5 — Enhanced lab safety results (optional for backward compat) */
+    pesticidesPass?: boolean;
+    heavyMetalsPass?: boolean;
+    microbialsPass?: boolean;
+    mycotoxinsPass?: boolean;
   } | null;
   chainOfCustody: {
     from: string;

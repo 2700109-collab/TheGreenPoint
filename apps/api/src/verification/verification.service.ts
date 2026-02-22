@@ -1,12 +1,30 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Prisma, SuspiciousReport } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
+import { AuditService } from '../audit/audit.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { ProductVerificationDto } from '@ncts/shared-types';
 
 @Injectable()
 export class VerificationService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(VerificationService.name);
 
-  async verify(trackingId: string): Promise<ProductVerificationDto> {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
+
+  /**
+   * Section 7.5 — Enhanced verification with scan logging and lab results.
+   *
+   * Logs each scan as an OutboxEvent for analytics and fraud detection.
+   * Returns full lab test results including safety assessments.
+   */
+  async verify(
+    trackingId: string,
+    scanMetadata?: { ip?: string; userAgent?: string; latitude?: number; longitude?: number },
+  ): Promise<ProductVerificationDto> {
     if (!trackingId.startsWith('NCTS-ZA-')) {
       throw new NotFoundException(
         `Invalid tracking ID format: ${trackingId}`,
@@ -33,6 +51,28 @@ export class VerificationService {
       throw new NotFoundException(`Product with tracking ID ${trackingId} not found`);
     }
 
+    // Log scan event via OutboxEvent for analytics and fraud detection
+    try {
+      await this.prisma.outboxEvent.create({
+        data: {
+          eventType: 'verification.scanned',
+          aggregateType: 'plant',
+          aggregateId: plant.id,
+          payload: {
+            trackingId,
+            scanTimestamp: new Date().toISOString(),
+            ip: scanMetadata?.ip ?? null,
+            userAgent: scanMetadata?.userAgent ?? null,
+            location: scanMetadata?.latitude
+              ? { lat: scanMetadata.latitude, lng: scanMetadata.longitude }
+              : null,
+          },
+        },
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to log scan event: ${(err as Error).message}`);
+    }
+
     // Build chain of custody from transfer records related to this batch
     const chainOfCustody: { from: string; to: string; date: string }[] = [];
 
@@ -54,7 +94,6 @@ export class VerificationService {
 
       for (const item of transferItems) {
         if (item.transfer.status === 'accepted' || item.transfer.status === 'pending') {
-          // Resolve tenant names
           const [sender, receiver] = await Promise.all([
             this.prisma.tenant.findUnique({
               where: { id: item.transfer.senderTenantId },
@@ -78,7 +117,16 @@ export class VerificationService {
     const operatorName = plant.tenant.tradingName || plant.tenant.name;
     const labResult = plant.batch?.labResult;
 
+    // Emit scan event for real-time monitoring
+    this.eventEmitter.emit('verification.scanned', {
+      trackingId,
+      plantId: plant.id,
+      tenantId: plant.tenantId,
+      ip: scanMetadata?.ip,
+    });
+
     return {
+      valid: true,
       trackingId,
       productName: `${plant.strain.name} (${plant.strain.type})`,
       strain: plant.strain.name,
@@ -91,6 +139,11 @@ export class VerificationService {
             cbdPercent: labResult.cbdPercent,
             testDate: labResult.testDate.toISOString().split('T')[0] as string,
             labName: labResult.labName,
+            // Section 7.5 — Enhanced lab safety results
+            pesticidesPass: labResult.pesticidesPass,
+            heavyMetalsPass: labResult.heavyMetalsPass,
+            microbialsPass: labResult.microbialsPass,
+            mycotoxinsPass: labResult.mycotoxinsPass,
           }
         : null,
       chainOfCustody,
@@ -98,10 +151,39 @@ export class VerificationService {
     };
   }
 
-  async reportSuspicious(trackingId: string, reason: string) {
-    // Log the report — in production this would create a record in a dedicated table
-    // and trigger an alert to investigators
-    console.log(`[SUSPICIOUS REPORT] trackingId=${trackingId}, reason=${reason}, timestamp=${new Date().toISOString()}`);
+  /**
+   * Section 7.5 — Enhanced suspicious activity reporting.
+   *
+   * Creates a proper SuspiciousReport record (not just console.log),
+   * captures IP and geolocation, and triggers investigator notifications.
+   */
+  async reportSuspicious(
+    trackingId: string,
+    reason: string,
+    metadata?: {
+      ip?: string;
+      contact?: string;
+      latitude?: number;
+      longitude?: number;
+    },
+  ) {
+    // Create a proper SuspiciousReport record
+    const report = await this.prisma.suspiciousReport.create({
+      data: {
+        trackingId,
+        reason,
+        reporterIp: metadata?.ip ?? null,
+        reporterContact: metadata?.contact ?? null,
+        reporterLocation: metadata?.latitude
+          ? { lat: metadata.latitude, lng: metadata.longitude }
+          : Prisma.JsonNull,
+        investigationStatus: 'new',
+      },
+    });
+
+    this.logger.warn(
+      `Suspicious report ${report.id}: trackingId=${trackingId}, reason=${reason}`,
+    );
 
     // Attempt to record in audit event log if the tracking ID exists
     try {
@@ -111,28 +193,84 @@ export class VerificationService {
       });
 
       if (plant) {
-        const lastEvent = await this.prisma.auditEvent.findFirst({ orderBy: { sequenceNumber: 'desc' } });
-        const previousHash = lastEvent?.eventHash ?? '0'.repeat(64);
-
-        await this.prisma.auditEvent.create({
-          data: {
-            entityType: 'Plant',
-            entityId: plant.id,
-            action: 'SUSPICIOUS_REPORT',
-            actorId: 'public-consumer',
-            actorRole: 'consumer',
-            tenantId: plant.tenantId,
-            payload: { trackingId, reason, reportedAt: new Date().toISOString() },
-            previousHash,
-            eventHash: require('crypto').createHash('sha256').update(`${previousHash}:SUSPICIOUS_REPORT:${plant.id}`).digest('hex'),
+        await this.auditService.log({
+          entityType: 'suspicious_report',
+          entityId: report.id,
+          action: 'suspicious_report.created',
+          userId: 'public-consumer',
+          userRole: 'consumer',
+          tenantId: plant.tenantId,
+          metadata: {
+            trackingId,
+            reason,
+            reporterIp: metadata?.ip,
+            reportedAt: new Date().toISOString(),
           },
         });
       }
     } catch (err) {
-      // Non-critical — log and continue
-      console.error('Failed to create audit event for suspicious report:', err);
+      this.logger.error(
+        `Failed to create audit event for suspicious report: ${(err as Error).message}`,
+      );
     }
 
-    return { success: true, message: 'Report received. Thank you for helping keep our supply chain safe.' };
+    // Emit event for real-time alerting
+    this.eventEmitter.emit('verification.suspicious', {
+      reportId: report.id,
+      trackingId,
+      reason,
+    });
+
+    // Generate case reference: SUS-YYYY-NNN
+    const year = new Date().getFullYear();
+    const reportCount = await this.prisma.suspiciousReport.count();
+    const caseReference = `SUS-${year}-${String(reportCount).padStart(3, '0')}`;
+
+    return {
+      success: true,
+      reportId: report.id,
+      caseReference,
+      message: 'Report received. Thank you for helping keep our supply chain safe.',
+    };
+  }
+
+  /**
+   * Get scan history for a specific tracking ID (regulator/inspector use).
+   */
+  async getScanHistory(trackingId: string): Promise<{ id: string; payload: Prisma.JsonValue; createdAt: Date }[]> {
+    const events = await this.prisma.outboxEvent.findMany({
+      where: {
+        eventType: 'verification.scanned',
+        payload: { path: ['trackingId'], equals: trackingId },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      select: { id: true, payload: true, createdAt: true },
+    });
+    return events;
+  }
+
+  /**
+   * Get suspicious reports for a tracking ID (regulator/inspector use).
+   */
+  async getSuspiciousReports(
+    trackingId?: string,
+    page = 1,
+    limit = 20,
+  ): Promise<{ data: SuspiciousReport[]; total: number }> {
+    const where: Prisma.SuspiciousReportWhereInput = {};
+    if (trackingId) where.trackingId = trackingId;
+
+    const [data, total] = await Promise.all([
+      this.prisma.suspiciousReport.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.suspiciousReport.count({ where }),
+    ]);
+
+    return { data, total };
   }
 }

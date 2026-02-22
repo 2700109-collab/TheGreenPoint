@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   Patch,
+  Query,
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
@@ -12,6 +13,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { HarvestsService } from './harvests.service';
 import { JwtAuthGuard, TenantGuard, RolesGuard, Roles, CurrentUser, TenantId } from '../auth';
 import type { AuthenticatedUser } from '../auth';
+import { CreateHarvestDto, UpdateHarvestDto, HarvestFilterDto } from './dto';
 
 @ApiTags('harvests')
 @ApiBearerAuth()
@@ -23,8 +25,19 @@ export class HarvestsController {
   @UseGuards(JwtAuthGuard, RolesGuard, TenantGuard)
   @Roles('operator_admin', 'operator_staff')
   @ApiOperation({ summary: 'Create a harvest event' })
-  create(@TenantId() tenantId: string, @Body() dto: any) {
+  create(@TenantId() tenantId: string, @Body() dto: CreateHarvestDto) {
     return this.harvestsService.create(tenantId, dto);
+  }
+
+  @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('operator_admin', 'operator_staff', 'regulator', 'inspector')
+  @ApiOperation({ summary: 'List harvests with filtering & pagination' })
+  findAll(@CurrentUser() user: AuthenticatedUser, @Query() query: HarvestFilterDto) {
+    const tenantId = ['regulator', 'inspector', 'admin'].includes(user.role)
+      ? undefined
+      : user.tenantId;
+    return this.harvestsService.findAll(tenantId, query);
   }
 
   @Get(':id')
@@ -34,7 +47,7 @@ export class HarvestsController {
   findOne(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser,
-  ): Promise<any> {
+  ) {
     const tenantId = ['regulator', 'inspector', 'admin'].includes(user.role)
       ? undefined
       : user.tenantId;
@@ -48,7 +61,7 @@ export class HarvestsController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @TenantId() tenantId: string,
-    @Body() dto: any,
+    @Body() dto: UpdateHarvestDto,
   ) {
     return this.harvestsService.update(id, tenantId, dto);
   }
