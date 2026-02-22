@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npx prisma generate --schema=packages/database/prisma/schema.prisma && cd apps/portal && npx vite build",
+  "buildCommand": "pnpm --filter @ncts/database exec prisma generate && pnpm --filter @ncts/portal exec vite build",
   "outputDirectory": "apps/portal/dist",
-  "installCommand": "npm i -g pnpm && pnpm install",
+  "installCommand": "pnpm install",
   "framework": null,
   "rewrites": [
     { "source": "/api/v1/(.*)", "destination": "/api/v1/$1" },

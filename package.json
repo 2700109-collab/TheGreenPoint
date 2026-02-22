@@ -6,7 +6,7 @@
   "author": "TheGreenPoint <info@thegreenpoint.co.za>",
   "license": "UNLICENSED",
   "engines": {
-    "node": ">=20.0.0",
+    "node": "20.x",
     "pnpm": ">=10.0.0"
   },
   "packageManager": "pnpm@10.30.1",
@@ -39,17 +39,7 @@
       "esbuild",
       "prisma",
       "@prisma/client",
-      "@prisma/engines",
-      "@nestjs/core"
-    ],
-    "ignoredBuiltDependencies": [
-      "@nestjs/core",
-      "@prisma/client",
-      "@prisma/engines",
-      "@scarf/scarf",
-      "@swc/core",
-      "esbuild",
-      "prisma"
+      "@prisma/engines"
     ]
   },
   "dependencies": {
