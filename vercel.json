@@ -4,7 +4,21 @@
   "outputDirectory": "apps/portal/dist",
   "installCommand": "pnpm install",
   "framework": null,
+  "functions": {
+    "api/v1/[...path].ts": {
+      "includeFiles": "packages/database/prisma/**"
+    }
+  },
+  "headers": [
+    {
+      "source": "/manifest.json",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
+      ]
+    }
+  ],
   "routes": [
+    { "src": "/manifest.json", "dest": "/manifest.json" },
     { "handle": "filesystem" },
     { "src": "/api/v1/(.*)", "dest": "/api/v1/$1" },
     { "src": "/(.*)", "dest": "/index.html" }

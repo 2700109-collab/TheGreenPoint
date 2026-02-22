@@ -1,11 +1,23 @@
-import { Typography, Card, Row, Col, Timeline } from 'antd';
-import { Shield, Target, Eye, Users, Scale, Globe } from 'lucide-react';
+import { Typography, Card, Row, Col, Button } from 'antd';
+import { Shield, Target, Eye, Users, Scale, Globe, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const { Title, Paragraph, Text } = Typography;
 
 export default function AboutPage() {
+  const navigate = useNavigate();
+
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '40px 24px' }}>
+      <Button
+        type="text"
+        icon={<ArrowLeft size={16} />}
+        onClick={() => navigate('/login')}
+        style={{ marginBottom: 16, padding: '4px 8px', color: '#1B3A5C' }}
+      >
+        Back to Login
+      </Button>
+
       <Title level={2}>About NCTS</Title>
       <Paragraph style={{ fontSize: 16, color: '#555' }}>
         The <strong>National Cannabis Tracking System (NCTS)</strong> is South Africa's
@@ -36,23 +48,12 @@ export default function AboutPage() {
         ))}
       </Row>
 
-      <Title level={3} style={{ marginTop: 40 }}>Key Milestones</Title>
-      <Timeline
-        items={[
-          { children: '2024 – Cannabis for Private Purposes Act signed into law' },
-          { children: '2025 Q1 – NCTS development initiated under SAHPRA mandate' },
-          { children: '2025 Q3 – Pilot programme launched with licensed cultivators in Western Cape' },
-          { children: '2026 Q1 – National rollout to all provinces' },
-          { children: '2026 Q2 – Public verification portal launched' },
-        ]}
-      />
-
       <Title level={3} style={{ marginTop: 40 }}>Contact</Title>
       <Paragraph>
         <strong>SAHPRA — Cannabis Tracking Division</strong><br />
         Email: <a href="mailto:ncts@sahpra.gov.za">ncts@sahpra.gov.za</a><br />
         Helpline: <a href="tel:08006287">0800-NCTS (6287)</a><br />
-        Physical: CSIR Campus, Meiring Naudé Road, Brummeria, Pretoria, 0001
+        Address: 123 Protea Avenue, Government Precinct, Pretoria, 0001
       </Paragraph>
     </div>
   );

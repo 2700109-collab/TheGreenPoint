@@ -14,7 +14,10 @@ import AuthLayout from './components/layout/AuthLayout';
 // ---------------------------------------------------------------------------
 const AboutPage = lazy(() => import('./pages/static/AboutPage'));
 const HowItWorksPage = lazy(() => import('./pages/static/HowItWorksPage'));
+const ForOperatorsPage = lazy(() => import('./pages/static/ForOperatorsPage'));
+const ForRegulatorsPage = lazy(() => import('./pages/static/ForRegulatorsPage'));
 const PrivacyPage = lazy(() => import('./pages/static/PrivacyPage'));
+const PaiaPage = lazy(() => import('./pages/static/PaiaPage'));
 const TermsPage = lazy(() => import('./pages/static/TermsPage'));
 const AccessibilityPage = lazy(() => import('./pages/static/AccessibilityPage'));
 const CookiePolicyPage = lazy(() => import('./pages/static/CookiePolicyPage'));
@@ -175,10 +178,10 @@ export default function App() {
         {/* ----------------------------------------------------------------- */}
         <Route path="/about" element={<AboutPage />} />
         <Route path="/how-it-works" element={<HowItWorksPage />} />
-        <Route path="/for-operators" element={<HowItWorksPage />} />
-        <Route path="/for-regulators" element={<HowItWorksPage />} />
+        <Route path="/for-operators" element={<ForOperatorsPage />} />
+        <Route path="/for-regulators" element={<ForRegulatorsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
-        <Route path="/paia" element={<PrivacyPage />} />
+        <Route path="/paia" element={<PaiaPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/accessibility" element={<AccessibilityPage />} />
         <Route path="/cookies" element={<CookiePolicyPage />} />

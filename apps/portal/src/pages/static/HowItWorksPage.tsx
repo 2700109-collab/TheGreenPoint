@@ -1,11 +1,23 @@
-import { Typography, Collapse, Card, Row, Col } from 'antd';
-import { BarChart3, PieChart, FileText, Building2 } from 'lucide-react';
+import { Typography, Collapse, Card, Row, Col, Button } from 'antd';
+import { BarChart3, PieChart, FileText, Building2, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const { Title, Paragraph } = Typography;
 
 export default function HowItWorksPage() {
+  const navigate = useNavigate();
+
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '40px 24px' }}>
+      <Button
+        type="text"
+        icon={<ArrowLeft size={16} />}
+        onClick={() => navigate('/login')}
+        style={{ marginBottom: 16, padding: '4px 8px', color: '#1B3A5C' }}
+      >
+        Back to Login
+      </Button>
+
       <Title level={2}>How NCTS Works</Title>
       <Paragraph style={{ fontSize: 16, color: '#555' }}>
         NCTS provides end-to-end digital tracking of licensed cannabis in South Africa —

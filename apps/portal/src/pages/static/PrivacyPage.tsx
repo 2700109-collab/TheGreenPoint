@@ -1,10 +1,23 @@
-import { Typography, Collapse } from 'antd';
+import { Typography, Collapse, Button } from 'antd';
+import { ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const { Title, Paragraph, Text } = Typography;
 
 export default function PrivacyPage() {
+  const navigate = useNavigate();
+
   return (
     <div style={{ maxWidth: 800, margin: '0 auto', padding: '40px 24px' }}>
+      <Button
+        type="text"
+        icon={<ArrowLeft size={16} />}
+        onClick={() => navigate('/login')}
+        style={{ marginBottom: 16, padding: '4px 8px', color: '#1B3A5C' }}
+      >
+        Back to Login
+      </Button>
+
       <Title level={2}>POPIA Privacy Notice</Title>
       <Paragraph type="secondary">
         Last updated: 1 February 2026 &nbsp;|&nbsp; Effective: 1 February 2026
@@ -27,7 +40,7 @@ export default function PrivacyPage() {
             children: (
               <Paragraph>
                 The responsible party for the processing of personal information is
-                SAHPRA, located at CSIR Campus, Meiring Naudé Road, Brummeria,
+                SAHPRA, located at 123 Protea Avenue, Government Precinct,
                 Pretoria, 0001. Contact: <a href="mailto:privacy@sahpra.gov.za">privacy@sahpra.gov.za</a>
               </Paragraph>
             ),
@@ -38,14 +51,14 @@ export default function PrivacyPage() {
             children: (
               <>
                 <Paragraph>We collect the following personal information:</Paragraph>
-                <ul>
-                  <li>Full name, email address, and contact details of licensed operators and their staff</li>
-                  <li>South African Identity Numbers for transfer driver verification</li>
-                  <li>Business registration details, BEE levels, and tax numbers</li>
-                  <li>Facility location data (GPS coordinates, addresses)</li>
-                  <li>Login credentials (hashed passwords) and session data</li>
-                  <li>Audit trail data (actions performed, IP addresses, timestamps)</li>
-                </ul>
+                <div style={{ paddingLeft: 16 }}>
+                  <Paragraph style={{ marginBottom: 4 }}>• Full name, email address, and contact details of licensed operators and their staff</Paragraph>
+                  <Paragraph style={{ marginBottom: 4 }}>• South African Identity Numbers for transfer driver verification</Paragraph>
+                  <Paragraph style={{ marginBottom: 4 }}>• Business registration details, BEE levels, and tax numbers</Paragraph>
+                  <Paragraph style={{ marginBottom: 4 }}>• Facility location data (GPS coordinates, addresses)</Paragraph>
+                  <Paragraph style={{ marginBottom: 4 }}>• Login credentials (hashed passwords) and session data</Paragraph>
+                  <Paragraph style={{ marginBottom: 4 }}>• Audit trail data (actions performed, IP addresses, timestamps)</Paragraph>
+                </div>
               </>
             ),
           },
@@ -53,14 +66,14 @@ export default function PrivacyPage() {
             key: '3',
             label: '3. Purpose of Processing',
             children: (
-              <ul>
-                <li>Regulatory compliance with the Cannabis for Private Purposes Act</li>
-                <li>Seed-to-sale tracking of licensed cannabis products</li>
-                <li>Permit and licence management</li>
-                <li>Public safety verification of product authenticity</li>
-                <li>INCB treaty reporting obligations</li>
-                <li>Compliance monitoring and inspection management</li>
-              </ul>
+              <div style={{ paddingLeft: 16 }}>
+                <Paragraph style={{ marginBottom: 4 }}>• Regulatory compliance with the Cannabis for Private Purposes Act</Paragraph>
+                <Paragraph style={{ marginBottom: 4 }}>• Seed-to-sale tracking of licensed cannabis products</Paragraph>
+                <Paragraph style={{ marginBottom: 4 }}>• Permit and licence management</Paragraph>
+                <Paragraph style={{ marginBottom: 4 }}>• Public safety verification of product authenticity</Paragraph>
+                <Paragraph style={{ marginBottom: 4 }}>• INCB treaty reporting obligations</Paragraph>
+                <Paragraph style={{ marginBottom: 4 }}>• Compliance monitoring and inspection management</Paragraph>
+              </div>
             ),
           },
           {
@@ -91,12 +104,12 @@ export default function PrivacyPage() {
             key: '6',
             label: '6. Your Rights',
             children: (
-              <ul>
-                <li>Right to access your personal information (Section 23)</li>
-                <li>Right to correction of inaccurate information (Section 24)</li>
-                <li>Right to object to processing (Section 11(3))</li>
-                <li>Right to lodge a complaint with the Information Regulator</li>
-              </ul>
+              <div style={{ paddingLeft: 16 }}>
+                <Paragraph style={{ marginBottom: 4 }}>• Right to access your personal information (Section 23)</Paragraph>
+                <Paragraph style={{ marginBottom: 4 }}>• Right to correction of inaccurate information (Section 24)</Paragraph>
+                <Paragraph style={{ marginBottom: 4 }}>• Right to object to processing (Section 11(3))</Paragraph>
+                <Paragraph style={{ marginBottom: 4 }}>• Right to lodge a complaint with the Information Regulator</Paragraph>
+              </div>
             ),
           },
           {

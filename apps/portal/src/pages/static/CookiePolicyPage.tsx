@@ -1,10 +1,23 @@
-import { Typography } from 'antd';
+import { Typography, Button } from 'antd';
+import { ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const { Title, Paragraph } = Typography;
 
 export default function CookiePolicyPage() {
+  const navigate = useNavigate();
+
   return (
     <div style={{ maxWidth: 800, margin: '0 auto', padding: '40px 24px' }}>
+      <Button
+        type="text"
+        icon={<ArrowLeft size={16} />}
+        onClick={() => navigate('/login')}
+        style={{ marginBottom: 16, padding: '4px 8px', color: '#1B3A5C' }}
+      >
+        Back to Login
+      </Button>
+
       <Title level={2}>Cookie Policy</Title>
       <Paragraph type="secondary">Last updated: 1 February 2026</Paragraph>
 
