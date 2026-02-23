@@ -503,13 +503,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // Parse URL to extract path segments (handles both Vercel query.path and raw URL)
+  // Parse URL to extract path segments (handles all Vercel routing modes)
   const url = new URL(req.url ?? '/', `https://${req.headers.host ?? 'localhost'}`);
   const urlPath = url.pathname.replace(/^\/api\/v1\/?/, '').replace(/\/$/, '');
   const pathArr = req.query.path;
-  const seg: string[] = Array.isArray(pathArr) ? pathArr
-    : pathArr ? [pathArr]
-    : urlPath ? urlPath.split('/') : [];
+  const seg: string[] = Array.isArray(pathArr)
+    ? pathArr
+    : typeof pathArr === 'string' && pathArr.includes('/')
+      ? pathArr.split('/')            // e.g. 'auth/login' → ['auth','login']
+      : typeof pathArr === 'string' && pathArr
+        ? [pathArr]                   // e.g. 'health' → ['health']
+        : urlPath
+          ? urlPath.split('/')        // fallback: parse from req.url
+          : [];
   const resource = seg[0];
 
   console.log('[SERVER-ROUTER-DEBUG] ▶ incoming request', {
