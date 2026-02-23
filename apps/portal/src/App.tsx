@@ -1,8 +1,8 @@
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Spin } from 'antd';
 import { useAuth } from './contexts/AuthContext';
 import { lazy, Suspense } from 'react';
-import { NotFoundPage, ComingSoonPage as ComingSoonBase } from '@ncts/ui';
+import { NotFoundPage } from '@ncts/ui';
 
 // Layouts
 import OperatorLayout from './components/layout/OperatorLayout';
@@ -47,9 +47,12 @@ const SaleDetailPage = lazy(() => import('./pages/operator/SaleDetailPage'));
 const LabResultsPage = lazy(() => import('./pages/operator/LabResultsPage'));
 const ProfilePage = lazy(() => import('./pages/operator/ProfilePage'));
 const OperatorSettingsPage = lazy(() => import('./pages/operator/SettingsPage'));
+const BatchesPage = lazy(() => import('./pages/operator/BatchesPage'));
+const OutgoingTransfersPage = lazy(() => import('./pages/operator/OutgoingTransfersPage'));
+const IncomingTransfersPage = lazy(() => import('./pages/operator/IncomingTransfersPage'));
 
 // ---------------------------------------------------------------------------
-// Admin pages (13)
+// Admin pages (13 + 8 new)
 // ---------------------------------------------------------------------------
 const NationalDashboard = lazy(() => import('./pages/admin/NationalDashboard'));
 const OperatorsPage = lazy(() => import('./pages/admin/OperatorsPage'));
@@ -64,6 +67,14 @@ const SystemSettingsPage = lazy(() => import('./pages/admin/SystemSettingsPage')
 const InspectionsPage = lazy(() => import('./pages/admin/InspectionsPage'));
 const CreateInspectionPage = lazy(() => import('./pages/admin/CreateInspectionPage'));
 const InspectionDetailPage = lazy(() => import('./pages/admin/InspectionDetailPage'));
+const OperatorApplicationsPage = lazy(() => import('./pages/admin/OperatorApplicationsPage'));
+const PendingPermitsPage = lazy(() => import('./pages/admin/PendingPermitsPage'));
+const ExpiredPermitsPage = lazy(() => import('./pages/admin/ExpiredPermitsPage'));
+const ComplianceAlertsPage = lazy(() => import('./pages/admin/ComplianceAlertsPage'));
+const AllFacilitiesPage = lazy(() => import('./pages/admin/AllFacilitiesPage'));
+const TrackingPlantsPage = lazy(() => import('./pages/admin/TrackingPlantsPage'));
+const TrackingTransfersPage = lazy(() => import('./pages/admin/TrackingTransfersPage'));
+const TrackingSalesPage = lazy(() => import('./pages/admin/TrackingSalesPage'));
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -74,12 +85,6 @@ const PageSpinner = () => (
     <Spin size="large" />
   </div>
 );
-
-/** Router-aware wrapper for the shared ComingSoonPage placeholder. */
-function ComingSoonPage() {
-  const navigate = useNavigate();
-  return <ComingSoonBase onGoBack={() => navigate(-1)} />;
-}
 
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) {
   const { user, isLoading } = useAuth();
@@ -122,12 +127,12 @@ export default function App() {
           <Route path="plants" element={<PlantsPage />} />
           <Route path="plants/register" element={<PlantRegisterPage />} />
           <Route path="plants/:id" element={<PlantDetailPage />} />
-          <Route path="plants/batches" element={<ComingSoonPage />} />
+          <Route path="plants/batches" element={<BatchesPage />} />
           <Route path="harvests" element={<HarvestsPage />} />
           <Route path="transfers" element={<TransfersPage />} />
           <Route path="transfers/:id" element={<TransferDetailPage />} />
-          <Route path="transfers/outgoing" element={<ComingSoonPage />} />
-          <Route path="transfers/incoming" element={<ComingSoonPage />} />
+          <Route path="transfers/outgoing" element={<OutgoingTransfersPage />} />
+          <Route path="transfers/incoming" element={<IncomingTransfersPage />} />
           <Route path="sales" element={<SalesPage />} />
           <Route path="sales/:id" element={<SaleDetailPage />} />
           <Route path="lab-results" element={<LabResultsPage />} />
@@ -146,22 +151,22 @@ export default function App() {
           <Route index element={<NationalDashboard />} />
           <Route path="dashboard" element={<NationalDashboard />} />
           <Route path="operators" element={<OperatorsPage />} />
-          <Route path="operators/applications" element={<ComingSoonPage />} />
+          <Route path="operators/applications" element={<OperatorApplicationsPage />} />
           <Route path="operators/:id" element={<OperatorDetailPage />} />
           <Route path="permits" element={<PermitsPage />} />
-          <Route path="permits/pending" element={<ComingSoonPage />} />
-          <Route path="permits/expired" element={<ComingSoonPage />} />
+          <Route path="permits/pending" element={<PendingPermitsPage />} />
+          <Route path="permits/expired" element={<ExpiredPermitsPage />} />
           <Route path="permits/:id" element={<PermitDetailPage />} />
           <Route path="compliance" element={<CompliancePage />} />
-          <Route path="compliance/alerts" element={<ComingSoonPage />} />
+          <Route path="compliance/alerts" element={<ComplianceAlertsPage />} />
           <Route path="compliance/inspections" element={<InspectionsPage />} />
           <Route path="compliance/inspections/new" element={<CreateInspectionPage />} />
           <Route path="compliance/inspections/:id" element={<InspectionDetailPage />} />
-          <Route path="facilities" element={<ComingSoonPage />} />
+          <Route path="facilities" element={<AllFacilitiesPage />} />
           <Route path="facilities/map" element={<FacilitiesMapPage />} />
-          <Route path="tracking/plants" element={<ComingSoonPage />} />
-          <Route path="tracking/transfers" element={<ComingSoonPage />} />
-          <Route path="tracking/sales" element={<ComingSoonPage />} />
+          <Route path="tracking/plants" element={<TrackingPlantsPage />} />
+          <Route path="tracking/transfers" element={<TrackingTransfersPage />} />
+          <Route path="tracking/sales" element={<TrackingSalesPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="reports/monthly" element={<ReportsPage />} />
           <Route path="reports/incb" element={<ReportsPage />} />
