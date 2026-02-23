@@ -15,6 +15,9 @@
       "dest": "/api/v1/[...path]"
     },
     {
+      "handle": "filesystem"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }

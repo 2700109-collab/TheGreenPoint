@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm --filter @ncts/verify exec vite build",
+  "outputDirectory": "apps/verify/dist",
+  "installCommand": "pnpm install",
+  "framework": null,
+  "routes": [
+    { "src": "/api/v1/(.*)", "dest": "https://ncts-portal-ivory.vercel.app/api/v1/$1" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
