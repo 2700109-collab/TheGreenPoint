@@ -270,6 +270,17 @@ async function handleSales(req: VercelRequest, res: VercelResponse, seg: string[
 // REGULATORY
 // ============================================================================
 async function handleRegulatory(req: VercelRequest, res: VercelResponse, seg: string[]) {
+  // IMPORTANT: More-specific route (/dashboard/trends) must come BEFORE generic (/dashboard)
+  if (req.method === 'GET' && seg[1] === 'dashboard' && seg[2] === 'trends') {
+    // Return last 30 days trend data
+    const days: { date: string; plants: number; harvests: number; sales: number }[] = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      days.push({ date: d.toISOString().slice(0, 10), plants: Math.floor(Math.random() * 20), harvests: Math.floor(Math.random() * 5), sales: Math.floor(Math.random() * 10) });
+    }
+    return res.json(days);
+  }
+
   if (req.method === 'GET' && seg[1] === 'dashboard') {
     const [totalOperators, totalPlants, totalFacilities, activePermits] = await Promise.all([
       prisma.tenant.count(),
@@ -286,16 +297,6 @@ async function handleRegulatory(req: VercelRequest, res: VercelResponse, seg: st
       flaggedOperators: await prisma.tenant.count({ where: { complianceStatus: { in: ['warning', 'non_compliant'] } } }),
       recentActivity: [],
     });
-  }
-
-  if (req.method === 'GET' && seg[1] === 'dashboard' && seg[2] === 'trends') {
-    // Return last 30 days trend data
-    const days: { date: string; plants: number; harvests: number; sales: number }[] = [];
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date(); d.setDate(d.getDate() - i);
-      days.push({ date: d.toISOString().slice(0, 10), plants: Math.floor(Math.random() * 20), harvests: Math.floor(Math.random() * 5), sales: Math.floor(Math.random() * 10) });
-    }
-    return res.json(days);
   }
 
   if (req.method === 'GET' && seg[1] === 'facilities' && seg[2] === 'geo') {
@@ -373,7 +374,7 @@ async function handleVerify(req: VercelRequest, res: VercelResponse, seg: string
           const sample = await prisma.plant.findMany({ take: 5, select: { trackingId: true } });
           console.log('[SERVER-VERIFY-DEBUG] sample trackingIds in DB:', sample.map((p: any) => p.trackingId));
         } catch (e) { console.log('[SERVER-VERIFY-DEBUG] could not fetch samples:', String(e)); }
-        return res.status(404).json({ error: 'Not found', debug: { trackingId, message: 'No plant found with this trackingId' } });
+        return res.status(404).json({ error: 'Product not found', trackingId });
       }
 
       const result = {
@@ -396,7 +397,7 @@ async function handleVerify(req: VercelRequest, res: VercelResponse, seg: string
       return res.json(result);
     } catch (dbErr) {
       console.error('[SERVER-VERIFY-DEBUG] DB ERROR during verify', { error: (dbErr as Error).message, stack: (dbErr as Error).stack });
-      return res.status(500).json({ error: 'Database error during verification', debug: (dbErr as Error).message });
+      return res.status(500).json({ error: 'Database error during verification' });
     }
   }
   console.log('[SERVER-VERIFY-DEBUG] no matching verify route', { method: req.method, seg });
@@ -556,6 +557,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   } catch (err: any) {
     console.error('[SERVER-ROUTER-DEBUG] UNHANDLED ERROR', { message: err.message, stack: err.stack });
-    return res.status(500).json({ error: err.message ?? 'Internal server error', debug: { stack: err.stack?.substring(0, 500) } });
+    return res.status(500).json({ error: err.message ?? 'Internal server error' });
   }
 }

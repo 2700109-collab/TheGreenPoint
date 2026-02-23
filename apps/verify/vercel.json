@@ -1,9 +1,8 @@
 {
-  "buildCommand": "vite build",
-  "framework": "vite",
-  "outputDirectory": "dist",
-  "rewrites": [
-    { "source": "/api/v1/:path*", "destination": "https://ncts-portal-ivory.vercel.app/api/v1/:path*" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "routes": [
+    { "src": "/api/v1/(.*)", "dest": "https://ncts-portal-ivory.vercel.app/api/v1/$1" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
