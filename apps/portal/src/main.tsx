@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider } from 'antd';
 import enUS from 'antd/locale/en_US';
 import { AuthProvider } from './contexts/AuthContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { themeConfig } from './theme';
 import { registerNctsChartTheme } from '@ncts/ui';
 import App from './App';
@@ -30,7 +31,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <QueryClientProvider client={queryClient}>
         <ConfigProvider theme={themeConfig} locale={enUS}>
           <AuthProvider>
-            <App />
+            <ErrorBoundary>
+              <App />
+            </ErrorBoundary>
           </AuthProvider>
         </ConfigProvider>
       </QueryClientProvider>

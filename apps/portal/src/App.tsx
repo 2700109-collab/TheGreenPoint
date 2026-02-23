@@ -1,7 +1,7 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { Spin } from 'antd';
+import { Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
+import { Spin, message } from 'antd';
 import { useAuth } from './contexts/AuthContext';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { NotFoundPage } from '@ncts/ui';
 
 // Layouts
@@ -96,6 +96,15 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
 
 export default function App() {
   const { user, isLoading } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('reason') === 'expired') {
+      message.warning('Your session has expired. Please log in again.');
+      searchParams.delete('reason');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, []);
 
   if (isLoading) return <PageSpinner />;
 
