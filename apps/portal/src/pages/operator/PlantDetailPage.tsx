@@ -343,7 +343,7 @@ export default function PlantDetailPage() {
     return (
       <NctsPageContainer title="Plant Not Found">
         <Empty description={`No plant found with ID "${id}"`}>
-          <Button type="primary" onClick={() => navigate('/plants')}>
+          <Button type="primary" onClick={() => navigate('/operator/plants')}>
             Back to Plants
           </Button>
         </Empty>
@@ -383,7 +383,7 @@ export default function PlantDetailPage() {
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Breadcrumb
           items={[
-            { title: <Link to="/plants">Plants</Link> },
+            { title: <Link to="/operator/plants">Plants</Link> },
             { title: plant.trackingId },
           ]}
         />
@@ -420,14 +420,14 @@ export default function PlantDetailPage() {
                 {plant.motherPlantId && (
                   <>
                     {' — '}
-                    <Link to={`/plants/${plant.motherPlantId}`}>
+                    <Link to={`/operator/plants/${plant.motherPlantId}`}>
                       <TrackingId id={plant.motherPlantId} size="sm" />
                     </Link>
                   </>
                 )}
               </Descriptions.Item>
               <Descriptions.Item label="Facility">
-                <Link to={`/facilities/${plant.facilityId}`}>{plant.facilityName}</Link>
+                <Link to={`/operator/facilities`}>{plant.facilityName}</Link>
               </Descriptions.Item>
               <Descriptions.Item label="Growing Zone">{plant.growingZone}</Descriptions.Item>
               <Descriptions.Item label="Growing Medium">{plant.growingMedium}</Descriptions.Item>

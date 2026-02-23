@@ -201,7 +201,7 @@ export default function InspectionsPage() {
       dataIndex: 'id',
       width: 130,
       render: (_dom, row) => (
-        <Tag color="blue" style={{ cursor: 'pointer' }} onClick={() => navigate(`/compliance/inspections/${row.id}`)}>
+        <Tag color="blue" style={{ cursor: 'pointer' }} onClick={() => navigate(`/admin/compliance/inspections/${row.id}`)}>
           {row.id}
         </Tag>
       ),
@@ -210,7 +210,7 @@ export default function InspectionsPage() {
       title: 'Facility',
       dataIndex: 'facilityName',
       render: (_dom, row) => (
-        <a onClick={() => navigate(`/facilities/${row.facilityId}`)} style={{ cursor: 'pointer' }}>
+        <a onClick={() => navigate('/admin/facilities')} style={{ cursor: 'pointer' }}>
           {row.facilityName}
         </a>
       ),
@@ -254,7 +254,7 @@ export default function InspectionsPage() {
           type="link"
           size="small"
           icon={<Eye size={14} />}
-          onClick={() => navigate(`/compliance/inspections/${row.id}`)}
+          onClick={() => navigate(`/admin/compliance/inspections/${row.id}`)}
         >
           View
         </Button>
@@ -284,7 +284,7 @@ export default function InspectionsPage() {
                 <ClipboardCheck size={14} />
               </Space>
             }
-            onClick={() => navigate('/compliance/inspections/create')}
+            onClick={() => navigate('/admin/compliance/inspections/new')}
           >
             Schedule Inspection
           </Button>
@@ -362,7 +362,7 @@ export default function InspectionsPage() {
                     key="view"
                     type="link"
                     size="small"
-                    onClick={() => navigate(`/compliance/inspections/${item.id}`)}
+                    onClick={() => navigate(`/admin/compliance/inspections/${item.id}`)}
                   >
                     View
                   </Button>,
@@ -372,7 +372,7 @@ export default function InspectionsPage() {
                   title={
                     <Space>
                       <Tag color={TYPE_COLOR[item.type]}>{item.type}</Tag>
-                      <a onClick={() => navigate(`/compliance/inspections/${item.id}`)} style={{ cursor: 'pointer' }}>
+                      <a onClick={() => navigate(`/admin/compliance/inspections/${item.id}`)} style={{ cursor: 'pointer' }}>
                         {item.id}
                       </a>
                     </Space>

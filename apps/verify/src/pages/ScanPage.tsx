@@ -30,7 +30,9 @@ type CameraState = 'idle' | 'requesting' | 'active' | 'denied' | 'unsupported';
 
 /** Extract an NCTS tracking ID from a scanned QR value (URL or raw ID). */
 function extractTrackingId(raw: string): string | null {
-  const match = raw.match(/\b(PLT|TRF|SAL)-\d{8}-[A-Z0-9]{3,6}\b/i);
+  // Match both legacy format (PLT/TRF/SAL-YYYYMMDD-XXXX) and NCTS format (NCTS-ZA-YYYY-NNNNNN)
+  const match = raw.match(/\b(PLT|TRF|SAL)-\d{8}-[A-Z0-9]{3,6}\b/i)
+    || raw.match(/\bNCTS-ZA-\d{4}-\d{4,8}\b/i);
   return match ? match[0]!.toUpperCase() : null;
 }
 

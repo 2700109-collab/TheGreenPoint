@@ -33,7 +33,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <GovMasthead />
-      <PhaseBanner phase="beta" />
+      <PhaseBanner phase="pilot" />
 
       <div style={{ flex: 1, display: 'flex' }}>
         {/* ---------- Left branding panel (hidden on mobile) ---------- */}

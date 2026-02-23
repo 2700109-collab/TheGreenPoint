@@ -317,13 +317,13 @@ export default function PlantsPage() {
         key: 'view',
         icon: <Eye size={14} />,
         label: 'View',
-        onClick: () => navigate(`/plants/${record.id}`),
+        onClick: () => navigate(`/operator/plants/${record.id}`),
       },
       {
         key: 'edit',
         icon: <Pencil size={14} />,
         label: 'Edit',
-        onClick: () => navigate(`/plants/${record.id}/edit`),
+        onClick: () => navigate(`/operator/plants/${record.id}`),
       },
       { type: 'divider' },
       {
@@ -362,7 +362,7 @@ export default function PlantsPage() {
       width: 200,
       sorter: (a, b) => a.trackingId.localeCompare(b.trackingId),
       render: (_, record) => (
-        <TrackingId id={record.trackingId} size="sm" linkTo={`/plants/${record.id}`} />
+        <TrackingId id={record.trackingId} size="sm" linkTo={`/operator/plants/${record.id}`} />
       ),
     },
     {
@@ -395,7 +395,7 @@ export default function PlantsPage() {
       sorter: (a, b) => a.facilityName.localeCompare(b.facilityName),
       render: (_, record) => (
         <a
-          onClick={() => navigate(`/facilities/${record.facilityId}`)}
+          onClick={() => navigate(`/operator/facilities`)}
           style={{ cursor: 'pointer' }}
         >
           {record.facilityName}
@@ -472,7 +472,7 @@ export default function PlantsPage() {
         <Descriptions.Item label="Batch">{record.batchId}</Descriptions.Item>
         <Descriptions.Item label="Mother Plant">
           {record.motherPlantId ? (
-            <TrackingId id={record.motherPlantId} size="sm" linkTo={`/plants/${record.motherPlantId}`} />
+            <TrackingId id={record.motherPlantId} size="sm" linkTo={`/operator/plants/${record.motherPlantId}`} />
           ) : (
             <Text type="secondary">—</Text>
           )}
@@ -540,7 +540,7 @@ export default function PlantsPage() {
           <Button
             type="primary"
             icon={<Plus size={16} />}
-            onClick={() => navigate('/plants/register')}
+            onClick={() => navigate('/operator/plants/register')}
           >
             Register Plant
           </Button>

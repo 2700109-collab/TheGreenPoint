@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 
 interface VerifyLayoutProps {
   children: ReactNode;
@@ -37,19 +38,19 @@ export default function VerifyLayout({ children }: VerifyLayoutProps) {
         <div className="mx-auto flex max-w-content flex-wrap items-center justify-center gap-x-4 gap-y-1 px-6 py-4 text-xs text-slate-500">
           <span>© {new Date().getFullYear()} Republic of South Africa</span>
           <span className="hidden sm:inline" aria-hidden="true">·</span>
-          <a
-            href="/privacy"
+          <Link
+            to="/privacy"
             className="underline decoration-slate-300 underline-offset-2 hover:text-primary"
           >
             Privacy Policy
-          </a>
+          </Link>
           <span className="hidden sm:inline" aria-hidden="true">·</span>
-          <a
-            href="/accessibility"
+          <Link
+            to="/accessibility"
             className="underline decoration-slate-300 underline-offset-2 hover:text-primary"
           >
             Accessibility
-          </a>
+          </Link>
         </div>
       </footer>
     </div>

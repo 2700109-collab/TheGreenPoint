@@ -237,7 +237,7 @@ export default function PermitDetailPage() {
       {/* Custom title area (override the plain string title) */}
       <div style={{ marginTop: -8, marginBottom: 20 }}>
         <Space align="center" size={12}>
-          <Button type="text" icon={<ArrowLeft size={18} />} onClick={() => navigate('/permits')} style={{ padding: 0 }} />
+          <Button type="text" icon={<ArrowLeft size={18} />} onClick={() => navigate('/admin/permits')} style={{ padding: 0 }} />
           <TrackingId id={permit.permitNumber} size="lg" />
           <Tag color={TYPE_COLORS[permit.type] ?? 'default'} style={{ fontSize: 13 }}>{permit.type.toUpperCase()}</Tag>
         </Space>
@@ -256,7 +256,7 @@ export default function PermitDetailPage() {
               <Text copyable style={{ fontFamily: 'monospace' }}>{permit.permitNumber}</Text>
             </Descriptions.Item>
             <Descriptions.Item label="Operator">
-              <a onClick={() => navigate(`/operators/${permit.operatorId}`)} style={{ cursor: 'pointer' }}>
+              <a onClick={() => navigate(`/admin/operators/${permit.operatorId}`)} style={{ cursor: 'pointer' }}>
                 {permit.operatorName}
               </a>
             </Descriptions.Item>

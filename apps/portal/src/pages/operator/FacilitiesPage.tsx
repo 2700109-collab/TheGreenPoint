@@ -270,7 +270,7 @@ export default function FacilitiesPage() {
                 <Button
                   size="small"
                   icon={<Eye size={14} />}
-                  onClick={() => navigate(`/facilities/${f.id}`)}
+                  onClick={() => navigate(`/operator/facilities`)}
                 >
                   View Details
                 </Button>

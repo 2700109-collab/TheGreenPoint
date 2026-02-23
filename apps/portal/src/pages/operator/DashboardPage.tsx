@@ -80,9 +80,9 @@ const MOCK_ACTIVITY: ActivityItem[] = [
 ];
 
 const MOCK_ALERTS: AlertItem[] = [
-  { id: '1', severity: 'error', message: 'Compliance violation: PLT-20260218-X3Y4 missing inspection', timestamp: '2 hours ago', route: '/plants' },
-  { id: '2', severity: 'warning', message: 'Cultivation permit expiring in 28 days', timestamp: 'Yesterday', route: '/permits' },
-  { id: '3', severity: 'info', message: 'Incoming transfer TRF-20260221-M5N6 pending acceptance', timestamp: '3 hours ago', route: '/transfers' },
+  { id: '1', severity: 'error', message: 'Compliance violation: PLT-20260218-X3Y4 missing inspection', timestamp: '2 hours ago', route: '/operator/plants' },
+  { id: '2', severity: 'warning', message: 'Cultivation permit expiring in 28 days', timestamp: 'Yesterday', route: '/operator/dashboard' },
+  { id: '3', severity: 'info', message: 'Incoming transfer TRF-20260221-M5N6 pending acceptance', timestamp: '3 hours ago', route: '/operator/transfers' },
 ];
 
 // Mock 30-day transfer volume data — outgoing + incoming
@@ -177,7 +177,7 @@ export default function DashboardPage() {
             changePercent={MOCK_KPI.activePlants.changePercent}
             changePeriod="vs last 30 days"
             sparkline={MOCK_KPI.activePlants.sparkline}
-            onClick={() => navigate('/plants')}
+            onClick={() => navigate('/operator/plants')}
           />
         </Col>
         <Col xl={6} md={12} sm={24} xs={24}>
@@ -190,7 +190,7 @@ export default function DashboardPage() {
             changePercent={MOCK_KPI.pendingTransfers.changePercent}
             changePeriod="vs last 30 days"
             sparkline={MOCK_KPI.pendingTransfers.sparkline}
-            onClick={() => navigate('/transfers')}
+            onClick={() => navigate('/operator/transfers')}
           />
         </Col>
         <Col xl={6} md={12} sm={24} xs={24}>
@@ -203,7 +203,7 @@ export default function DashboardPage() {
             changePercent={MOCK_KPI.monthlySales.changePercent}
             changePeriod="vs last month"
             sparkline={MOCK_KPI.monthlySales.sparkline}
-            onClick={() => navigate('/sales')}
+            onClick={() => navigate('/operator/sales')}
           />
         </Col>
         <Col xl={6} md={12} sm={24} xs={24}>
@@ -267,7 +267,7 @@ export default function DashboardPage() {
           <Card
             title="Recent Activity"
             size="small"
-            extra={<Button type="link" size="small" onClick={() => navigate('/activity')}>View all</Button>}
+            extra={<Button type="link" size="small" onClick={() => navigate('/operator/dashboard')}>View all</Button>}
           >
             <Timeline
               items={MOCK_ACTIVITY.map((item) => {
@@ -358,7 +358,7 @@ export default function DashboardPage() {
                 block
                 type="primary"
                 icon={<><Plus size={14} style={{ marginRight: 4 }} /><Sprout size={14} /></>}
-                onClick={() => navigate('/plants/register')}
+                onClick={() => navigate('/operator/plants/register')}
               >
                 Register Plant
               </Button>
@@ -367,7 +367,7 @@ export default function DashboardPage() {
               <Button
                 block
                 icon={<><Plus size={14} style={{ marginRight: 4 }} /><Wheat size={14} /></>}
-                onClick={() => navigate('/harvests/new')}
+                onClick={() => navigate('/operator/harvests')}
               >
                 Record Harvest
               </Button>
@@ -376,7 +376,7 @@ export default function DashboardPage() {
               <Button
                 block
                 icon={<><Plus size={14} style={{ marginRight: 4 }} /><Truck size={14} /></>}
-                onClick={() => navigate('/transfers/new')}
+                onClick={() => navigate('/operator/transfers')}
               >
                 Create Transfer
               </Button>
@@ -385,7 +385,7 @@ export default function DashboardPage() {
               <Button
                 block
                 icon={<><Plus size={14} style={{ marginRight: 4 }} /><ShoppingCart size={14} /></>}
-                onClick={() => navigate('/sales/new')}
+                onClick={() => navigate('/operator/sales')}
               >
                 Record Sale
               </Button>
@@ -405,22 +405,22 @@ export default function DashboardPage() {
           <FloatButton
             icon={<Sprout size={16} />}
             tooltip="Register Plant"
-            onClick={() => navigate('/plants/register')}
+            onClick={() => navigate('/operator/plants/register')}
           />
           <FloatButton
             icon={<Wheat size={16} />}
             tooltip="Record Harvest"
-            onClick={() => navigate('/harvests/new')}
+            onClick={() => navigate('/operator/harvests')}
           />
           <FloatButton
             icon={<Truck size={16} />}
             tooltip="Create Transfer"
-            onClick={() => navigate('/transfers/new')}
+            onClick={() => navigate('/operator/transfers')}
           />
           <FloatButton
             icon={<ShoppingCart size={16} />}
             tooltip="Record Sale"
-            onClick={() => navigate('/sales/new')}
+            onClick={() => navigate('/operator/sales')}
           />
         </FloatButton.Group>
       )}

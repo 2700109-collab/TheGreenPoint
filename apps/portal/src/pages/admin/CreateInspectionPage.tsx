@@ -121,7 +121,7 @@ export default function CreateInspectionPage() {
         onFinish={async () => {
           // TODO: POST /inspections with form data
           message.success('Inspection scheduled successfully!');
-          navigate('/compliance/inspections');
+          navigate('/admin/compliance/inspections');
         }}
         formProps={{ validateMessages: { required: '${label} is required' } }}
         stepsFormRender={(_dom, submitter) => (

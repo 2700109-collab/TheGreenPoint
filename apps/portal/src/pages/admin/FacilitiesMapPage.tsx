@@ -210,7 +210,7 @@ export default function FacilitiesMapPage() {
       width: 80,
       render: (_: unknown, r: MockFacility) => (
         // TODO: Link to real facility detail route
-        <Link to={`/facilities/${r.id}`}>
+        <Link to="/admin/facilities">
           <Button type="link" size="small">View</Button>
         </Link>
       ),
@@ -453,7 +453,7 @@ export default function FacilitiesMapPage() {
                 </Descriptions.Item>
               </Descriptions>
               {/* TODO: Link to real facility detail route */}
-              <Link to={`/facilities/${selectedFacility.id}`}>
+              <Link to="/admin/facilities">
                 <Button type="link" style={{ padding: 0, marginTop: 8 }}>
                   View Facility Details →
                 </Button>

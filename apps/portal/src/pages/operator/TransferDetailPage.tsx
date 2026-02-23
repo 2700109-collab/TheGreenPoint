@@ -323,7 +323,7 @@ export default function TransferDetailPage() {
     return (
       <NctsPageContainer title="Transfer Not Found">
         <Empty description={`No transfer found with ID "${id}"`}>
-          <Button type="primary" onClick={() => navigate('/transfers')}>
+          <Button type="primary" onClick={() => navigate('/operator/transfers')}>
             Back to Transfers
           </Button>
         </Empty>
@@ -351,7 +351,7 @@ export default function TransferDetailPage() {
       <div style={{ marginBottom: 16 }}>
         <Breadcrumb
           items={[
-            { title: <Link to="/transfers">Transfers</Link> },
+            { title: <Link to="/operator/transfers">Transfers</Link> },
             { title: transfer.trackingId },
           ]}
         />

@@ -218,7 +218,7 @@ export default function PermitsPage() {
         key: 'review',
         icon: <Eye size={14} />,
         label: 'Review',
-        onClick: () => navigate(`/permits/${record.id}`),
+        onClick: () => navigate(`/admin/permits/${record.id}`),
       },
     ];
 
@@ -271,7 +271,7 @@ export default function PermitsPage() {
       width: 180,
       render: (_, record) => (
         <a
-          onClick={() => navigate(`/operators/${record.operatorId}`)}
+          onClick={() => navigate(`/admin/operators/${record.operatorId}`)}
           style={{ cursor: 'pointer', color: '#1677ff' }}
         >
           {record.operatorName}

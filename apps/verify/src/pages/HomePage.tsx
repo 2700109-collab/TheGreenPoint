@@ -28,15 +28,11 @@ function HomePage() {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    console.log('[VERIFY-HOME-DEBUG] form submitted', { trackingId, raw: trackingId.trim() });
     const error = validate(trackingId);
-    console.log('[VERIFY-HOME-DEBUG] validation result', { error: error || 'PASS', regex: TRACKING_ID_REGEX.toString() });
     setValidationError(error);
     setTouched(true);
     if (!error) {
-      const dest = `/verify/${trackingId.trim()}`;
-      console.log('[VERIFY-HOME-DEBUG] navigating to', dest);
-      navigate(dest);
+      navigate(`/verify/${trackingId.trim()}`);
     }
   }
 

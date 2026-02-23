@@ -47,19 +47,13 @@ const STAGES = [
 /* ------------------------------------------------------------------ */
 function VerifyPage() {
   const { trackingId = '' } = useParams<{ trackingId: string }>();
-  console.log('[VERIFY-PAGE-DEBUG] rendering', { trackingId, urlParams: window.location.href });
   const { data, isLoading, error } = useVerifyProduct(trackingId);
-  console.log('[VERIFY-PAGE-DEBUG] hook state', { isLoading, hasData: !!data, error: error ? String(error) : null, dataPreview: data ? JSON.stringify(data).substring(0, 200) : null });
 
   /* If the hook errors out (no backend), show the fail state */
   if (isLoading) return <LoadingState trackingId={trackingId} />;
-  if (error || !data) {
-    console.warn('[VERIFY-PAGE-DEBUG] showing FAIL state', { error: error ? { message: (error as any).message, status: (error as any).status, body: (error as any).body } : 'no data' });
-    return <FailState trackingId={trackingId} />;
-  }
+  if (error || !data) return <FailState trackingId={trackingId} />;
 
   const result = data as VerifiedData;
-  console.log('[VERIFY-PAGE-DEBUG] verification result', { status: result.verificationStatus, trackingId: result.trackingId, productName: result.productName });
 
   if (result.verificationStatus === 'expired') return <ExpiredState data={result} />;
   if (result.verificationStatus === 'pending') return <PendingState data={result} />;

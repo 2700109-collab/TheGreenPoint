@@ -40,15 +40,12 @@ export default function LoginPage() {
   }
 
   const handleLogin = async (values: { email: string; password: string; remember?: boolean }) => {
-    console.log('[LOGIN-PAGE-DEBUG] handleLogin called', { email: values.email, passwordLength: values.password.length });
     setLoading(true);
     setErrorMsg(null);
     try {
       await login(values.email, values.password);
-      console.log('[LOGIN-PAGE-DEBUG] login() resolved OK');
       message.success('Signed in successfully');
     } catch (err: unknown) {
-      console.error('[LOGIN-PAGE-DEBUG] login() THREW', err);
       const msg = err instanceof Error ? err.message : 'Invalid credentials';
       if (msg.toLowerCase().includes('locked')) {
         setErrorType('warning');
@@ -59,7 +56,6 @@ export default function LoginPage() {
       }
     } finally {
       setLoading(false);
-      console.log('[LOGIN-PAGE-DEBUG] handleLogin finished');
     }
   };
 

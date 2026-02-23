@@ -191,7 +191,7 @@ export default function InspectionDetailPage() {
     >
       {/* Back button */}
       <div style={{ marginBottom: 16 }}>
-        <Button type="text" icon={<ArrowLeft size={16} />} onClick={() => navigate('/compliance/inspections')} style={{ padding: 0, fontWeight: 500 }}>
+        <Button type="text" icon={<ArrowLeft size={16} />} onClick={() => navigate('/admin/compliance/inspections')} style={{ padding: 0, fontWeight: 500 }}>
           Back to Inspections
         </Button>
       </div>
@@ -206,7 +206,7 @@ export default function InspectionDetailPage() {
                 <TrackingId {...({ id: inspection.id, size: 'md' } as any)} />
               </Descriptions.Item>
               <Descriptions.Item label="Facility">
-                <a onClick={() => navigate(`/facilities/${inspection.facilityId}`)} style={{ cursor: 'pointer' }}>
+                <a onClick={() => navigate('/admin/facilities')} style={{ cursor: 'pointer' }}>
                   {inspection.facilityName}
                 </a>
               </Descriptions.Item>

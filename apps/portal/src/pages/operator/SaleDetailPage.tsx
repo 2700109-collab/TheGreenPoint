@@ -297,7 +297,7 @@ export default function SaleDetailPage() {
     return (
       <NctsPageContainer title="Sale Not Found">
         <Empty description={`No sale found with ID "${id}"`}>
-          <Button type="primary" onClick={() => navigate('/sales')}>
+          <Button type="primary" onClick={() => navigate('/operator/sales')}>
             Back to Sales
           </Button>
         </Empty>
@@ -331,7 +331,7 @@ export default function SaleDetailPage() {
       <div style={{ marginBottom: 16 }}>
         <Breadcrumb
           items={[
-            { title: <Link to="/sales">Sales</Link> },
+            { title: <Link to="/operator/sales">Sales</Link> },
             { title: sale.trackingId },
           ]}
         />

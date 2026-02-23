@@ -147,8 +147,10 @@ const proLayoutToken = {
   sider: {
     colorMenuBackground: '#001529',
     colorTextMenu: 'rgba(255,255,255,0.65)',
-    colorTextMenuSelected: '#FFFFFF',
-    colorBgMenuItemSelected: '#1B3A5C',
+    colorTextMenuSelected: '#E3F2FD',
+    colorBgMenuItemSelected: '#1565C0',
+    colorTextMenuActive: '#BBDEFB',
+    colorTextMenuItemHover: '#90CAF9',
   },
   pageContainer: {
     paddingBlockPageContainerContent: 24,
@@ -220,7 +222,7 @@ export default function AdminLayout() {
 
   const handleUserMenu: MenuProps['onClick'] = ({ key }) => {
     switch (key) {
-      case 'profile': navigate('/admin/profile'); break;
+      case 'profile': navigate('/admin/settings'); break;
       case 'settings': navigate('/admin/settings'); break;
       case 'help': /* open help panel */ break;
       case 'logout': logout(); navigate('/login'); break;
@@ -254,7 +256,7 @@ export default function AdminLayout() {
 
       {/* Phase banner */}
       <div style={{ marginTop: mastheadHeight }}>
-        <PhaseBanner phase="pilot" feedbackHref="/feedback" appVersion="0.1.0" />
+        <PhaseBanner phase="pilot" feedbackHref="https://github.com/2700109-collab/TheGreenPoint/issues" appVersion="0.1.0" />
       </div>
 
       {/* ProLayout */}
@@ -264,7 +266,6 @@ export default function AdminLayout() {
         layout="mix"
         navTheme="light"
         fixSiderbar={true}
-        fixedHeader={true}
         siderWidth={260}
         collapsedButtonRender={false}
         collapsed={collapsed}
@@ -273,6 +274,7 @@ export default function AdminLayout() {
         contentWidth="Fluid"
         token={proLayoutToken}
         location={{ pathname: location.pathname }}
+        selectedKeys={[location.pathname]}
         route={{ routes: adminMenuRoutes }}
         menuItemRender={(item: Record<string, any>, dom: React.ReactNode) => (
           <a
@@ -322,6 +324,32 @@ export default function AdminLayout() {
             </div>
           </div>
         )}
+        menuFooterRender={(props: any) => {
+          if (props?.collapsed) {
+            return (
+              <Tooltip title="Sign Out" placement="right">
+                <Button
+                  type="text"
+                  danger
+                  icon={<LogOut size={18} />}
+                  onClick={() => { logout(); navigate('/login'); }}
+                  style={{ width: '100%', marginBottom: 16 }}
+                />
+              </Tooltip>
+            );
+          }
+          return (
+            <Button
+              type="text"
+              danger
+              icon={<LogOut size={18} />}
+              onClick={() => { logout(); navigate('/login'); }}
+              style={{ width: '100%', marginBottom: 16 }}
+            >
+              Sign Out
+            </Button>
+          );
+        }}
         footerRender={() => <GovFooter />}
       >
         <div id="main-content" style={isMobile ? { paddingBottom: 72 } : undefined}>
