@@ -15,6 +15,7 @@ export function useFacilities(params?: { page?: number; limit?: number }) {
   return useQuery({
     queryKey: facilityKeys.list(params ?? {}),
     queryFn: () => apiClient.get<PaginatedResponse<Facility>>('/facilities', params),
+    staleTime: 300_000,
   });
 }
 
@@ -23,6 +24,7 @@ export function useFacility(id: string) {
     queryKey: facilityKeys.detail(id),
     queryFn: () => apiClient.get<Facility>(`/facilities/${id}`),
     enabled: !!id,
+    staleTime: 300_000,
   });
 }
 
@@ -31,6 +33,7 @@ export function useFacilityZones(facilityId: string) {
     queryKey: facilityKeys.zones(facilityId),
     queryFn: () => apiClient.get<Zone[]>(`/facilities/${facilityId}/zones`),
     enabled: !!facilityId,
+    staleTime: 300_000,
   });
 }
 

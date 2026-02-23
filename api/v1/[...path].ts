@@ -6,6 +6,15 @@ import { createRequire } from 'module';
 const _require = createRequire(import.meta.url);
 
 // ============================================================================
+// Structured logging helper
+// ============================================================================
+function log(level: 'info' | 'warn' | 'error', message: string, meta?: Record<string, unknown>) {
+  const entry = { timestamp: new Date().toISOString(), level, message, ...meta };
+  if (level === 'error') console.error(JSON.stringify(entry));
+  else console.log(JSON.stringify(entry));
+}
+
+// ============================================================================
 // Error classes — standardised API error format
 // ============================================================================
 class ApiError extends Error {
@@ -745,7 +754,7 @@ async function handleRegulatory(req: VercelRequest, res: VercelResponse, seg: st
 // ============================================================================
 async function handleVerify(req: VercelRequest, res: VercelResponse, seg: string[]) {
   if (req.method === 'POST' && seg[1] === 'report') {
-    console.log('Suspicious report received:', req.body?.trackingId ?? req.body);
+    log('warn', 'Suspicious report received', { trackingId: req.body?.trackingId, body: req.body });
     return res.json({ success: true, message: 'Report received' });
   }
 
@@ -1131,7 +1140,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!jwt || (jwt.role !== 'regulator' && jwt.role !== 'super_admin')) return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only admins can seed' } });
         return await handleSeed(req, res);
       }
-      case 'health': return res.json({ status: 'ok', timestamp: new Date().toISOString() });
+      case 'health': {
+        const timestamp = new Date().toISOString();
+        try {
+          await getPrisma().$queryRaw`SELECT 1`;
+          return res.json({ status: 'ok', timestamp, db: 'connected' });
+        } catch (dbErr: any) {
+          return res.json({ status: 'degraded', timestamp, db: 'disconnected', error: dbErr.message });
+        }
+      }
       default:
         return res.status(404).json({ error: { code: 'NOT_FOUND', message: `Route not found: /api/v1/${seg.join('/')}` } });
     }
@@ -1139,7 +1156,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (err instanceof ApiError) {
       return res.status(err.statusCode).json({ error: { code: err.code, message: err.message, ...(err.details ? { details: err.details } : {}) } });
     }
-    console.error('[NCTS API] Unhandled error:', err);
+    log('error', 'Unhandled API error', { path: seg.join('/'), method: req.method, error: err.message, stack: err.stack });
     return res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });
   }
 }

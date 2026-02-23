@@ -13,5 +13,6 @@ export function useVerifyProduct(trackingId: string) {
     queryFn: () => apiClient.get<ProductVerificationDto>(`/verify/${trackingId}`),
     enabled: !!trackingId,
     retry: false,
+    staleTime: 600_000,
   });
 }

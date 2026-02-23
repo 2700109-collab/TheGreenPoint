@@ -33,6 +33,7 @@ import {
   GovFooter,
   MobileBottomNav,
   AppBreadcrumbs,
+  OfflineBanner,
   useBreakpoint,
 } from '@ncts/ui';
 import type { NavTab, BreadcrumbItem } from '@ncts/ui';
@@ -251,6 +252,11 @@ export default function AdminLayout() {
 
   return (
     <div style={{ minHeight: '100vh' }}>
+      {/* Skip navigation link — accessibility */}
+      <a href="#main-content" className="sr-only">
+        Skip to main content
+      </a>
+
       {/* Government masthead */}
       <GovMasthead />
 
@@ -352,7 +358,8 @@ export default function AdminLayout() {
         }}
         footerRender={() => <GovFooter />}
       >
-        <div id="main-content" style={isMobile ? { paddingBottom: 72 } : undefined}>
+        <div id="main-content" role="main" aria-label="Admin portal content" style={isMobile ? { paddingBottom: 72 } : undefined}>
+          <OfflineBanner />
           <Outlet />
         </div>
       </ProLayout>

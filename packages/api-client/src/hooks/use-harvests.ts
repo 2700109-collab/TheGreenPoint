@@ -14,6 +14,7 @@ export function useHarvests(params?: { page?: number; limit?: number }) {
   return useQuery({
     queryKey: harvestKeys.list(params ?? {}),
     queryFn: () => apiClient.get<PaginatedResponse<Harvest>>('/harvests', params),
+    staleTime: 60_000,
   });
 }
 
@@ -22,6 +23,7 @@ export function useHarvest(id: string) {
     queryKey: harvestKeys.detail(id),
     queryFn: () => apiClient.get<Harvest>(`/harvests/${id}`),
     enabled: !!id,
+    staleTime: 60_000,
   });
 }
 

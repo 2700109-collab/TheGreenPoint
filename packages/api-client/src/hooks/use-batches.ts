@@ -14,6 +14,7 @@ export function useBatches(params?: { page?: number; limit?: number }) {
   return useQuery({
     queryKey: batchKeys.list(params ?? {}),
     queryFn: () => apiClient.get<PaginatedResponse<Batch>>('/batches', params),
+    staleTime: 60_000,
   });
 }
 
@@ -22,5 +23,6 @@ export function useBatch(id: string) {
     queryKey: batchKeys.detail(id),
     queryFn: () => apiClient.get<Batch>(`/batches/${id}`),
     enabled: !!id,
+    staleTime: 60_000,
   });
 }

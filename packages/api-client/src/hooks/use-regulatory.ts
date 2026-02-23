@@ -16,6 +16,7 @@ export function useRegulatoryDashboard() {
   return useQuery({
     queryKey: regulatoryKeys.dashboard(),
     queryFn: () => apiClient.get<RegulatoryDashboardDto>('/regulatory/dashboard'),
+    staleTime: 120_000,
   });
 }
 
@@ -31,6 +32,7 @@ export function useRegulatoryTrends() {
   return useQuery({
     queryKey: regulatoryKeys.trends(),
     queryFn: () => apiClient.get<TrendDataPoint[]>('/regulatory/dashboard/trends'),
+    staleTime: 120_000,
   });
 }
 
@@ -49,6 +51,7 @@ export function useFacilitiesGeo() {
   return useQuery({
     queryKey: regulatoryKeys.geo(),
     queryFn: () => apiClient.get<FacilityGeoPoint[]>('/regulatory/facilities/geo'),
+    staleTime: 300_000,
   });
 }
 
@@ -57,6 +60,7 @@ export function useOperators(params?: { page?: number; limit?: number }) {
     queryKey: regulatoryKeys.operators(params ?? {}),
     queryFn: () =>
       apiClient.get<PaginatedResponse<Tenant & { complianceScore?: number }>>('/regulatory/operators', params),
+    staleTime: 120_000,
   });
 }
 
@@ -65,6 +69,7 @@ export function usePermits(params?: { page?: number; limit?: number; status?: st
     queryKey: regulatoryKeys.permits(params ?? {}),
     queryFn: () =>
       apiClient.get<PaginatedResponse<Permit & { tenant?: { name: string }; facility?: { name: string; province: string } }>>('/regulatory/permits', params),
+    staleTime: 120_000,
   });
 }
 
@@ -92,5 +97,6 @@ export function useComplianceAlerts(params?: { page?: number; limit?: number }) 
     queryKey: regulatoryKeys.complianceAlerts(params ?? {}),
     queryFn: () =>
       apiClient.get<PaginatedResponse<ComplianceAlert>>('/regulatory/compliance/alerts', params),
+    staleTime: 60_000,
   });
 }

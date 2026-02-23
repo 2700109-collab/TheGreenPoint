@@ -22,6 +22,7 @@ export function usePlants(params?: Partial<PlantFilterDto>) {
     queryKey: plantKeys.list(params ?? {}),
     queryFn: () =>
       apiClient.get<PaginatedResponse<Plant>>('/plants', params),
+    staleTime: 60_000,
   });
 }
 
@@ -30,6 +31,7 @@ export function usePlant(id: string) {
     queryKey: plantKeys.detail(id),
     queryFn: () => apiClient.get<Plant>(`/plants/${id}`),
     enabled: !!id,
+    staleTime: 60_000,
   });
 }
 

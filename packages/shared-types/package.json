@@ -17,6 +17,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && node -e \"require('fs').writeFileSync('dist/cjs/package.json',JSON.stringify({type:'commonjs'}))\"",
     "type-check": "tsc --noEmit",
+    "test": "vitest run",
     "clean": "rimraf dist *.tsbuildinfo",
     "lint": "eslint src/"
   },
@@ -24,6 +25,7 @@
     "@ncts/tsconfig": "workspace:*",
     "@ncts/eslint-config": "workspace:*",
     "typescript": "^5.7.0",
-    "rimraf": "^6.0.0"
+    "rimraf": "^6.0.0",
+    "vitest": "^3.0.0"
   }
 }

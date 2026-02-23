@@ -20,6 +20,7 @@ export function useSales(params?: {
   return useQuery({
     queryKey: saleKeys.list(params ?? {}),
     queryFn: () => apiClient.get<PaginatedResponse<Sale>>('/sales', params),
+    staleTime: 30_000,
   });
 }
 
@@ -28,6 +29,7 @@ export function useSale(id: string) {
     queryKey: saleKeys.detail(id),
     queryFn: () => apiClient.get<Sale>(`/sales/${id}`),
     enabled: !!id,
+    staleTime: 30_000,
   });
 }
 

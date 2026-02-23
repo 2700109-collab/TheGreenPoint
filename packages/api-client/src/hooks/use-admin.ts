@@ -58,6 +58,7 @@ export function useInspections(filters?: Record<string, unknown>) {
   return useQuery({
     queryKey: adminKeys.inspections(filters),
     queryFn: () => apiClient.get<Inspection[]>('/inspections', filters as Record<string, string | number | boolean | undefined>),
+    staleTime: 60_000,
   });
 }
 
@@ -66,6 +67,7 @@ export function useInspection(id: string) {
     queryKey: adminKeys.inspection(id),
     queryFn: () => apiClient.get<Inspection>(`/inspections/${id}`),
     enabled: !!id,
+    staleTime: 60_000,
   });
 }
 
@@ -87,6 +89,7 @@ export function useInspectionAnalytics() {
   return useQuery({
     queryKey: adminKeys.inspectionAnalytics(),
     queryFn: () => apiClient.get<InspectionAnalytics>('/inspections/analytics'),
+    staleTime: 120_000,
   });
 }
 
@@ -94,6 +97,7 @@ export function useAuditLog(filters?: Record<string, unknown>) {
   return useQuery({
     queryKey: adminKeys.auditLog(filters),
     queryFn: () => apiClient.get<AuditLogEntry[]>('/audit', filters as Record<string, string | number | boolean | undefined>),
+    staleTime: 30_000,
   });
 }
 
@@ -125,6 +129,7 @@ export function useSalesAggregate(period: string) {
       '/regulatory/sales-aggregate',
       { period },
     ),
+    staleTime: 120_000,
   });
 }
 
@@ -132,5 +137,6 @@ export function useComplianceAverage() {
   return useQuery({
     queryKey: adminKeys.complianceAverage(),
     queryFn: () => apiClient.get<{ average: number; trend: number }>('/regulatory/compliance-average'),
+    staleTime: 120_000,
   });
 }

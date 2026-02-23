@@ -20,6 +20,7 @@ export function useTransfers(params?: { page?: number; limit?: number }) {
   return useQuery({
     queryKey: transferKeys.list(params ?? {}),
     queryFn: () => apiClient.get<PaginatedResponse<Transfer>>('/transfers', params),
+    staleTime: 30_000,
   });
 }
 
@@ -28,6 +29,7 @@ export function useTransfer(id: string) {
     queryKey: transferKeys.detail(id),
     queryFn: () => apiClient.get<Transfer>(`/transfers/${id}`),
     enabled: !!id,
+    staleTime: 30_000,
   });
 }
 

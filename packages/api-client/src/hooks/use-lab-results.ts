@@ -15,6 +15,7 @@ export function useLabResults(params?: { page?: number; limit?: number }) {
   return useQuery({
     queryKey: labResultKeys.list(params ?? {}),
     queryFn: () => apiClient.get<PaginatedResponse<LabResult>>('/lab-results', params),
+    staleTime: 60_000,
   });
 }
 
@@ -23,6 +24,7 @@ export function useLabResult(id: string) {
     queryKey: labResultKeys.detail(id),
     queryFn: () => apiClient.get<LabResult>(`/lab-results/${id}`),
     enabled: !!id,
+    staleTime: 60_000,
   });
 }
 
@@ -31,6 +33,7 @@ export function useLabResultsByBatch(batchId: string) {
     queryKey: labResultKeys.byBatch(batchId),
     queryFn: () => apiClient.get<LabResult[]>(`/lab-results/batch/${batchId}`),
     enabled: !!batchId,
+    staleTime: 60_000,
   });
 }
 

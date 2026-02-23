@@ -88,6 +88,8 @@ export {
   getQueueSize,
 } from './utils/offline-queue';
 export type { QueuedRequest } from './utils/offline-queue';
+export { useOfflineQueue } from './hooks/useOfflineQueue';
+export type { OfflineQueueResult } from './hooks/useOfflineQueue';
 
 // Design Tokens
 export * from './tokens';

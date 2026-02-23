@@ -1,86 +1,104 @@
-# 🌿 NCTS — National Cannabis Tracking System
+﻿# 🌿 NCTS — National Cannabis Tracking System
 
-> Seed-to-Sale Digital Infrastructure for South Africa
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite)](https://vite.dev/)
+[![Prisma](https://img.shields.io/badge/Prisma-6-2D3748?logo=prisma)](https://www.prisma.io/)
+[![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?logo=vercel)](https://vercel.com/)
+[![License: ISC](https://img.shields.io/badge/License-ISC-green.svg)](https://opensource.org/licenses/ISC)
+
+> Seed-to-Sale digital infrastructure for South Africa's regulated cannabis industry.
 
 ## Overview
 
-The **National Cannabis Tracking System (NCTS)** is a cloud-based, multi-tenant platform that digitally tracks every licensed cannabis plant and product through the South African supply chain — from seed to sale.
+The **National Cannabis Tracking System (NCTS)** is a cloud-based, multi-tenant platform that digitally tracks every licensed cannabis plant and product through the South African supply chain — from seed to sale. Built for SAHPRA, DALRRD, and licensed operators.
 
-### Modules
+## Architecture
 
-| Module | Port | Description |
-|--------|------|-------------|
-| **Operator Portal** (`apps/web`) | 5173 | Plant/batch registration, harvest reporting, lab results, transfers, sales |
-| **Regulatory Dashboard** (`apps/admin`) | 5174 | SAHPRA/DALRRD compliance monitoring, permit management, national overview |
-| **Public Verification** (`apps/verify`) | 5175 | Product verification via QR code — confirming a product is licensed and tested |
-| **API** (`apps/api`) | 3000 | NestJS backend with REST + OpenAPI |
+**Monorepo** powered by pnpm workspaces + Turborepo.
+
+### Apps
+
+| App | Path | Description |
+|-----|------|-------------|
+| **Portal** | `apps/portal` | Operator + Regulator portal — React 19, Ant Design 5, Vite |
+| **Verify** | `apps/verify` | Public product verification PWA — React 19, Tailwind CSS, Vite |
+| **API** | `api/v1/[...path].ts` | Vercel serverless catch-all function |
+
+### Packages
+
+| Package | Description |
+|---------|-------------|
+| `packages/api-client` | Typed API client + TanStack React Query hooks |
+| `packages/audit-lib` | Tamper-proof cryptographic audit hash chain |
+| `packages/crypto-lib` | Cryptographic utilities (POPIA encryption) |
+| `packages/database` | Prisma 6 schema, migrations & client |
+| `packages/qr-lib` | QR code generation + HMAC verification for tracking IDs |
+| `packages/shared-types` | Shared TypeScript types, enums & DTOs |
+| `packages/ui` | Shared React components (OfflineBanner, SyncStatus, i18n, etc.) |
+| `packages/eslint-config` | Shared ESLint configurations |
+| `packages/tsconfig` | Shared TypeScript base configs |
 
 ## Tech Stack
 
-- **Monorepo:** Turborepo + pnpm
-- **Backend:** NestJS (Fastify) + PostgreSQL 17 (Neon serverless)
-- **Frontend:** React 19 + Ant Design 5 + TypeScript
-- **ORM:** Prisma 6
-- **Database:** Neon (serverless PostgreSQL) — aws-eu-central-1
-- **Deployment:** Vercel (frontend + serverless API)
-- **Testing:** Vitest + Playwright + k6
+React 19 · TypeScript 5.7 · Ant Design 5 · Tailwind CSS 3 · Vite 6 · TanStack Query 5 · Prisma 6 · Neon PostgreSQL · Vercel Serverless · Vitest
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js ≥ 20
-- pnpm ≥ 10
-- Neon CLI (`npm i -g neonctl`) — for database management
+- **Node.js** >= 20
+- **pnpm** >= 9
 
-### Setup
+### Install & Run
 
 ```bash
-# Clone and install
-cd ncts
+git clone <repo-url> && cd ncts
 pnpm install
 
-# Database is already provisioned on Neon.
-# To re-run migrations + seed:
+# Provision / reset the database
 .\infrastructure\scripts\setup-database.ps1
 
-# Run all apps in dev mode
+# Start all apps in dev mode
 pnpm dev
 ```
 
-### URLs
+## Scripts
 
-- API: http://localhost:3000
-- Swagger: http://localhost:3000/api/docs
-- Operator Portal: http://localhost:5173
-- Verification: http://localhost:5175
-- Prisma Studio: `cd packages/database && npx prisma studio`
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start all apps in development mode |
+| `pnpm build` | Build all packages and apps |
+| `pnpm lint` | Lint all packages |
+| `pnpm type-check` | TypeScript type-checking across the monorepo |
+| `pnpm test` | Run unit tests (Vitest) |
+| `pnpm test:e2e` | Run end-to-end tests |
+| `pnpm format` | Format code with Prettier |
+| `pnpm db:migrate` | Run Prisma database migrations |
+| `pnpm db:seed` | Seed the database |
+| `pnpm db:studio` | Open Prisma Studio |
 
-## Project Structure
+## Deployment
 
-```
-ncts/
-├── apps/
-│   ├── api/           # NestJS backend
-│   ├── web/           # Operator portal (React + Ant Design)
-│   ├── admin/         # Government dashboard (React + Ant Design)
-│   └── verify/        # Public verification PWA
-├── packages/
-│   ├── shared-types/  # TypeScript interfaces, enums, DTOs
-│   ├── database/      # Prisma schema + migrations + seeds
-│   ├── audit-lib/     # Hash-chaining audit library
-│   ├── crypto-lib/    # Encryption utilities (POPIA)
-│   ├── qr-lib/        # QR code generation + HMAC verification
-│   ├── ui/            # Shared React components
-│   ├── eslint-config/ # Shared ESLint config
-│   └── tsconfig/      # Shared TypeScript configs
-├── infrastructure/
-│   ├── sql/           # Post-migration SQL (RLS, sequences, partitioning, views)
-│   ├── scripts/       # Setup & utility scripts
-│   └── terraform/
-└── .github/workflows/
-```
+Both apps deploy to **Vercel** automatically on push to `master`.
+
+### Live URLs
+
+| Service | URL |
+|---------|-----|
+| Portal | https://ncts-portal-ivory.vercel.app |
+| Verify | https://ncts-alpha.vercel.app |
+| API Health | https://ncts-portal-ivory.vercel.app/api/v1/health |
+
+## Environment Variables
+
+Configured in the Vercel dashboard:
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | Neon PostgreSQL connection string |
+| `JWT_SECRET` | Secret for signing JWT tokens |
 
 ## License
 
-UNLICENSED — Proprietary. Copyright © 2026 TheGreenPoint.
+ISC

@@ -46,6 +46,7 @@ export function useOperatorDashboard(operatorId: string) {
     queryKey: operatorDashboardKeys.dashboard(operatorId),
     queryFn: () => apiClient.get<DashboardData>(`/operators/${operatorId}/dashboard`),
     enabled: !!operatorId,
+    staleTime: 120_000,
   });
 }
 
@@ -54,6 +55,7 @@ export function useActivityFeed(operatorId: string) {
     queryKey: operatorDashboardKeys.activity(operatorId),
     queryFn: () => apiClient.get<ActivityItem[]>(`/operators/${operatorId}/activity`),
     enabled: !!operatorId,
+    staleTime: 30_000,
   });
 }
 
@@ -62,6 +64,7 @@ export function useGlobalSearch(query: string) {
     queryKey: operatorDashboardKeys.search(query),
     queryFn: () => apiClient.get<SearchResult[]>('/search', { q: query }),
     enabled: query.length >= 2,
+    staleTime: 0,
   });
 }
 
@@ -69,6 +72,7 @@ export function useNotifications() {
   return useQuery({
     queryKey: operatorDashboardKeys.notifications(),
     queryFn: () => apiClient.get<Notification[]>('/notifications'),
+    staleTime: 30_000,
   });
 }
 
