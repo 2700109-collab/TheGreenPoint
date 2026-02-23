@@ -4,7 +4,7 @@
  */
 
 import { useRef, useState } from 'react';
-import { Card, Descriptions, Drawer, Tag, Typography } from 'antd';
+import { Card, Descriptions, Drawer, Spin, Tag, Typography } from 'antd';
 import { ProTable } from '@ant-design/pro-components';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import dayjs from 'dayjs';
@@ -17,6 +17,7 @@ import {
   NctsPageContainer,
   CsvExportButton,
 } from '@ncts/ui';
+import { useAuditLog } from '@ncts/api-client';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -50,21 +51,8 @@ const ACTION_COLOR: Record<AuditAction, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// Mock Data — TODO: Replace with API hooks
+// Mock Data DELETED — now using useAuditLog() hook
 // ---------------------------------------------------------------------------
-
-const MOCK_AUDIT: AuditEntry[] = [
-  { id: 'aud-1', timestamp: '2026-02-21T09:12:00Z', actorName: 'Thabo Nkosi', actorRole: 'Admin', action: 'create', entity: 'Operator', entityId: 'OPR-20260221-GPC', description: 'Created new operator registration for GreenPoint Cannabis', ipAddress: '196.21.45.***' },
-  { id: 'aud-2', timestamp: '2026-02-21T08:45:00Z', actorName: 'Lerato Dlamini', actorRole: 'Inspector', action: 'update', entity: 'Facility', entityId: 'FAC-20260115-CPT', description: 'Updated facility inspection status to compliant', ipAddress: '41.13.122.***' },
-  { id: 'aud-3', timestamp: '2026-02-20T16:30:00Z', actorName: 'Sipho Mabaso', actorRole: 'Admin', action: 'delete', entity: 'Plant', entityId: 'PLT-20260118-DES', description: 'Destroyed plant batch — failed lab test', ipAddress: '105.225.88.***' },
-  { id: 'aud-4', timestamp: '2026-02-20T14:10:00Z', actorName: 'Naledi Mokoena', actorRole: 'Auditor', action: 'view', entity: 'Transfer', entityId: 'TRF-20260210-KZN', description: 'Viewed transfer manifest for KZN shipment', ipAddress: '102.65.33.***' },
-  { id: 'aud-5', timestamp: '2026-02-20T11:00:00Z', actorName: 'System', actorRole: 'System', action: 'login', entity: 'User', entityId: 'USR-THABO-001', description: 'Successful login from Johannesburg office', ipAddress: '196.21.45.***' },
-  { id: 'aud-6', timestamp: '2026-02-19T17:20:00Z', actorName: 'Lerato Dlamini', actorRole: 'Inspector', action: 'export', entity: 'Report', entityId: 'RPT-20260219-MON', description: 'Exported monthly compliance report as PDF', ipAddress: '41.13.122.***' },
-  { id: 'aud-7', timestamp: '2026-02-19T10:15:00Z', actorName: 'Thabo Nkosi', actorRole: 'Admin', action: 'update', entity: 'Permit', entityId: 'PRM-20260105-ACT', description: 'Renewed cultivation permit for GreenLeaf Holdings', ipAddress: '196.21.45.***' },
-  { id: 'aud-8', timestamp: '2026-02-18T15:40:00Z', actorName: 'Naledi Mokoena', actorRole: 'Auditor', action: 'create', entity: 'Batch', entityId: 'BAT-20260218-HRV', description: 'Registered new harvest batch from Mpumalanga facility', ipAddress: '102.65.33.***' },
-  { id: 'aud-9', timestamp: '2026-02-18T09:30:00Z', actorName: 'Sipho Mabaso', actorRole: 'Admin', action: 'update', entity: 'Operator', entityId: 'OPR-20250412-HVG', description: 'Suspended operator due to compliance violations', ipAddress: '105.225.88.***' },
-  { id: 'aud-10', timestamp: '2026-02-17T13:55:00Z', actorName: 'System', actorRole: 'System', action: 'export', entity: 'Report', entityId: 'RPT-20260217-INCB', description: 'Automated INCB annual report generation', ipAddress: '10.0.0.***' },
-];
 
 // ---------------------------------------------------------------------------
 // CSV columns
@@ -114,6 +102,21 @@ const MOCK_DIFFS: Record<string, { before: Record<string, unknown>; after: Recor
 export default function AuditLogPage() {
   const actionRef = useRef<ActionType>(undefined);
   const [selectedEntry, setSelectedEntry] = useState<AuditEntry | null>(null);
+  const { data: auditResponse, isLoading } = useAuditLog();
+
+  const auditEntries: AuditEntry[] = (auditResponse?.data ?? auditResponse ?? []).map((e: any) => ({
+    id: e.id,
+    timestamp: e.timestamp,
+    actorName: e.actorName ?? `${e.firstName ?? ''} ${e.lastName ?? ''}`.trim() || e.userId || 'System',
+    actorRole: e.actorRole ?? e.role ?? 'System',
+    action: (e.action ?? 'view') as AuditAction,
+    entity: e.entityType ?? e.entity ?? '',
+    entityId: e.entityId ?? '',
+    description: e.description ?? (e.details as any)?.description ?? '',
+    ipAddress: e.ipAddress ?? '',
+  }));
+
+  if (isLoading) return <div style={{display:'flex',justifyContent:'center',padding:'100px 0'}}><Spin size="large" /></div>;
 
   const columns: ProColumns<AuditEntry>[] = [
     {
@@ -189,7 +192,7 @@ export default function AuditLogPage() {
       subTitle="7-year retention per POPIA"
       extra={
         <CsvExportButton
-          data={MOCK_AUDIT}
+          data={auditEntries}
           columns={CSV_COLUMNS}
           filename="audit-log-export"
         />
@@ -214,7 +217,7 @@ export default function AuditLogPage() {
       <ProTable<AuditEntry>
         actionRef={actionRef}
         columns={columns}
-        dataSource={MOCK_AUDIT}
+        dataSource={auditEntries}
         rowKey="id"
         search={{ filterType: 'light' }}
         options={{ density: true, fullScreen: true, reload: true, setting: true }}
@@ -272,8 +275,8 @@ export default function AuditLogPage() {
             )}
 
             <Card title="Related Audit Entries" size="small">
-              {MOCK_AUDIT.filter((e) => e.entityId === selectedEntry.entityId && e.id !== selectedEntry.id).length > 0 ? (
-                MOCK_AUDIT.filter((e) => e.entityId === selectedEntry.entityId && e.id !== selectedEntry.id).map((e) => (
+              {auditEntries.filter((e) => e.entityId === selectedEntry.entityId && e.id !== selectedEntry.id).length > 0 ? (
+                auditEntries.filter((e) => e.entityId === selectedEntry.entityId && e.id !== selectedEntry.id).map((e) => (
                   <div
                     key={e.id}
                     style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0', cursor: 'pointer' }}

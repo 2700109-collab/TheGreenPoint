@@ -4,10 +4,11 @@
  */
 
 import { useState } from 'react';
-import { Card, Tabs, Form, Input, Switch, Table, Tag, Button, Space, InputNumber, Badge } from 'antd';
+import { Card, Tabs, Form, Input, Switch, Table, Tag, Button, Space, InputNumber, Badge, Spin, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { Save, TestTube, Pencil, Trash2 } from 'lucide-react';
 import { NctsPageContainer } from '@ncts/ui';
+import { useSystemSettings, useUpdateSystemSettings, useAdminUsers } from '@ncts/api-client';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,24 +55,9 @@ interface RetentionRow {
 }
 
 // ---------------------------------------------------------------------------
-// Mock Data — TODO: Replace with API hooks
+// Mock Data DELETED (MOCK_THRESHOLDS, MOCK_ADMIN_USERS) — now using hooks
+// MOCK_INTEGRATIONS, MOCK_NOTIFICATIONS, MOCK_RETENTION kept (no backend yet)
 // ---------------------------------------------------------------------------
-
-const MOCK_THRESHOLDS: ThresholdRow[] = [
-  { key: '1', metric: 'Inventory loss (%)', minor: 2, major: 5, critical: 10, active: true },
-  { key: '2', metric: 'Transfer delay (hours)', minor: 24, major: 48, critical: 72, active: true },
-  { key: '3', metric: 'Weight discrepancy (%)', minor: 1, major: 3, critical: 5, active: true },
-  { key: '4', metric: 'Report overdue (days)', minor: 3, major: 7, critical: 14, active: true },
-  { key: '5', metric: 'THC limit (%)', minor: 0.2, major: 0.3, critical: 0.5, active: true },
-];
-
-const MOCK_ADMIN_USERS: AdminUser[] = [
-  { key: '1', name: 'Thabo Nkosi', email: 'thabo@ncts.gov.za', role: 'Super Admin', lastLogin: '2026-02-21 09:00', status: 'active' },
-  { key: '2', name: 'Lerato Dlamini', email: 'lerato@ncts.gov.za', role: 'Admin', lastLogin: '2026-02-20 14:30', status: 'active' },
-  { key: '3', name: 'Sipho Mabaso', email: 'sipho@ncts.gov.za', role: 'Admin', lastLogin: '2026-02-19 11:15', status: 'active' },
-  { key: '4', name: 'Naledi Mokoena', email: 'naledi@ncts.gov.za', role: 'Auditor', lastLogin: '2026-02-18 16:45', status: 'active' },
-  { key: '5', name: 'Johan van der Merwe', email: 'johan@ncts.gov.za', role: 'Admin', lastLogin: '2026-01-10 08:00', status: 'inactive' },
-];
 
 const MOCK_INTEGRATIONS: Integration[] = [
   { name: 'SARS', status: 'connected', endpoint: 'https://api.sars.gov.za/v2/cannabis' },
@@ -111,6 +97,48 @@ const INTEGRATION_STATUS: Record<Integration['status'], { color: string; label: 
 
 export default function SystemSettingsPage() {
   const [activeTab, setActiveTab] = useState('general');
+  const { data: settingsResponse, isLoading: settingsLoading } = useSystemSettings();
+  const { data: usersResponse, isLoading: usersLoading } = useAdminUsers();
+  const { mutateAsync: updateSettings, isPending: savePending } = useUpdateSystemSettings();
+
+  const isLoading = settingsLoading || usersLoading;
+
+  if (isLoading) return <div style={{display:'flex',justifyContent:'center',padding:'100px 0'}}><Spin size="large" /></div>;
+
+  // Map settings to threshold rows
+  const rawSettings = settingsResponse?.data ?? settingsResponse ?? [];
+  const thresholds: ThresholdRow[] = Array.isArray(rawSettings)
+    ? rawSettings.map((s: any, idx: number) => ({
+        key: s.id ?? String(idx + 1),
+        metric: s.key ?? '',
+        minor: (s.value as any)?.minor ?? 0,
+        major: (s.value as any)?.major ?? 0,
+        critical: (s.value as any)?.critical ?? 0,
+        active: (s.value as any)?.active ?? true,
+      }))
+    : [];
+
+  // Map admin users
+  const rawUsers = usersResponse?.data ?? usersResponse ?? [];
+  const adminUsers: AdminUser[] = Array.isArray(rawUsers)
+    ? rawUsers.map((u: any, idx: number) => ({
+        key: u.id ?? String(idx + 1),
+        name: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email,
+        email: u.email ?? '',
+        role: u.role ?? 'Admin',
+        lastLogin: u.lastLogin ?? '',
+        status: u.active ? 'active' : 'inactive',
+      }))
+    : [];
+
+  const handleSaveSettings = async () => {
+    try {
+      await updateSettings({ key: 'thresholds', value: thresholds } as any);
+      message.success('Settings saved successfully');
+    } catch {
+      message.error('Failed to save settings');
+    }
+  };
 
   // -- General Tab ----------------------------------------------------------
   const generalTab = (
@@ -125,7 +153,7 @@ export default function SystemSettingsPage() {
         <Form.Item label="Maintenance Mode" valuePropName="checked">
           <Switch />
         </Form.Item>
-        <Button type="primary" icon={<Save size={14} />}>Save Changes</Button>
+        <Button type="primary" icon={<Save size={14} />} onClick={handleSaveSettings} loading={savePending}>Save Changes</Button>
       </Form>
     </Card>
   );
@@ -154,13 +182,13 @@ export default function SystemSettingsPage() {
   const thresholdsTab = (
     <Card title="Compliance Thresholds">
       <Table<ThresholdRow>
-        dataSource={MOCK_THRESHOLDS}
+        dataSource={thresholds}
         columns={thresholdColumns}
         pagination={false}
         size="small"
       />
       <div style={{ marginTop: 16 }}>
-        <Button type="primary" icon={<Save size={14} />}>Save Thresholds</Button>
+        <Button type="primary" icon={<Save size={14} />} onClick={handleSaveSettings} loading={savePending}>Save Thresholds</Button>
       </div>
     </Card>
   );
@@ -192,7 +220,7 @@ export default function SystemSettingsPage() {
   const usersTab = (
     <Card title="Admin Users">
       <Table<AdminUser>
-        dataSource={MOCK_ADMIN_USERS}
+        dataSource={adminUsers}
         columns={userColumns}
         pagination={false}
         size="small"

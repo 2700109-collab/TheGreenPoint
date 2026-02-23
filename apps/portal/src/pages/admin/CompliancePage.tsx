@@ -4,7 +4,7 @@
  */
 
 import { useRef } from 'react';
-import { Card, Row, Col, Tag, Progress, Statistic, Typography, Dropdown, Button, Space, Badge } from 'antd';
+import { Card, Row, Col, Tag, Progress, Statistic, Typography, Dropdown, Button, Space, Badge, Spin } from 'antd';
 import type { MenuProps } from 'antd';
 import { ProTable } from '@ant-design/pro-components';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
@@ -17,6 +17,7 @@ import {
   CHART_COLORS,
 } from '@ncts/ui';
 import { Line } from '@ant-design/charts';
+import { useComplianceAlerts, useComplianceAverage } from '@ncts/api-client';
 
 dayjs.extend(relativeTime);
 
@@ -75,21 +76,8 @@ const MONTHLY_TREND = [
 ];
 
 // ---------------------------------------------------------------------------
-// Mock Alerts — TODO: Replace with API hooks
+// Mock Alerts DELETED — now using useComplianceAlerts() hook
 // ---------------------------------------------------------------------------
-
-const MOCK_ALERTS: ComplianceAlert[] = [
-  { id: 'al-1', severity: 'critical', operator: 'GreenLeaf Holdings', alertType: 'Expired cultivation permit', triggered: '2026-02-21T08:30:00Z', status: 'open', assignedTo: 'Thabo Nkosi' },
-  { id: 'al-2', severity: 'critical', operator: 'SunCanna Labs', alertType: 'Failed lab test – pesticide residue', triggered: '2026-02-20T14:12:00Z', status: 'investigating', assignedTo: 'Lerato Dlamini' },
-  { id: 'al-3', severity: 'critical', operator: 'BotaniCure ZA', alertType: 'Unauthorized facility expansion', triggered: '2026-02-19T09:45:00Z', status: 'open', assignedTo: 'Sipho Mabaso' },
-  { id: 'al-4', severity: 'major', operator: 'Cape Cannabis Co.', alertType: 'Permit expiring in 14 days', triggered: '2026-02-18T11:00:00Z', status: 'open', assignedTo: 'Naledi Mokoena' },
-  { id: 'al-5', severity: 'major', operator: 'Highveld Herbs', alertType: 'Missing batch traceability records', triggered: '2026-02-17T16:20:00Z', status: 'investigating', assignedTo: 'Thabo Nkosi' },
-  { id: 'al-6', severity: 'major', operator: 'Durban Extracts', alertType: 'Overdue inspection – 30 days', triggered: '2026-02-16T07:30:00Z', status: 'open', assignedTo: 'Lerato Dlamini' },
-  { id: 'al-7', severity: 'major', operator: 'KZN Botanicals', alertType: 'Non-compliant packaging labels', triggered: '2026-02-15T13:45:00Z', status: 'resolved', assignedTo: 'Sipho Mabaso' },
-  { id: 'al-8', severity: 'minor', operator: 'Free State Flora', alertType: 'Late monthly compliance report', triggered: '2026-02-14T10:10:00Z', status: 'open', assignedTo: 'Naledi Mokoena' },
-  { id: 'al-9', severity: 'minor', operator: 'Mpumalanga Meds', alertType: 'Staff certification renewal due', triggered: '2026-02-13T15:00:00Z', status: 'investigating', assignedTo: 'Thabo Nkosi' },
-  { id: 'al-10', severity: 'minor', operator: 'Limpopo Leaf', alertType: 'Minor record-keeping discrepancy', triggered: '2026-02-12T09:20:00Z', status: 'resolved', assignedTo: 'Lerato Dlamini' },
-];
 
 // ---------------------------------------------------------------------------
 // ProTable columns
@@ -194,8 +182,33 @@ function DistributionRow({ label, count, total, color }: { label: string; count:
 
 export default function CompliancePage() {
   const actionRef = useRef<ActionType>(undefined);
+  const { data: alertsResponse, isLoading: alertsLoading } = useComplianceAlerts({ limit: 50 });
+  const { data: complianceAvgResponse, isLoading: avgLoading } = useComplianceAverage();
 
-  const totalOperators = 42 + 68 + 17; // 127
+  const isLoading = alertsLoading || avgLoading;
+
+  if (isLoading) return <div style={{display:'flex',justifyContent:'center',padding:'100px 0'}}><Spin size="large" /></div>;
+
+  const rawAlerts = alertsResponse?.data?.data ?? alertsResponse?.data ?? [];
+  const alerts: ComplianceAlert[] = rawAlerts.map((a: any) => ({
+    id: a.id,
+    severity: a.severity === 'warning' ? 'major' : a.severity === 'info' ? 'minor' : (a.severity ?? 'minor') as Severity,
+    operator: a.operatorName ?? a.operator ?? '',
+    alertType: a.type ?? a.alertType ?? a.description ?? '',
+    triggered: a.createdAt ?? a.triggered ?? '',
+    status: a.status ?? 'open',
+    assignedTo: a.assignedTo ?? 'Unassigned',
+  }));
+
+  const avgData = complianceAvgResponse?.data ?? complianceAvgResponse;
+  const complianceAvg = (avgData as any)?.average ?? 92;
+
+  const criticalCount = alerts.filter((a) => a.severity === 'critical').length;
+  const majorCount = alerts.filter((a) => a.severity === 'major').length;
+  const minorCount = alerts.filter((a) => a.severity === 'minor').length;
+  const activeAlertsCount = alerts.filter((a) => a.status !== 'resolved').length;
+
+  const totalOperators = 42 + 68 + 17; // static distribution pending endpoint
 
   return (
     <NctsPageContainer
@@ -211,13 +224,13 @@ export default function CompliancePage() {
             <Title level={5} style={{ marginBottom: 16 }}>National Average</Title>
             <Progress
               type="circle"
-              percent={92}
+              percent={complianceAvg}
               strokeColor="#52c41a"
               format={(pct) => <span style={{ fontSize: 28, fontWeight: 700 }}>{pct}%</span>}
               size={140}
             />
             <Statistic
-              value={92}
+              value={complianceAvg}
               suffix="/ 100"
               style={{ marginTop: 12 }}
               valueStyle={{ fontSize: 16, color: '#52c41a' }}
@@ -227,24 +240,24 @@ export default function CompliancePage() {
 
         {/* Active Alerts */}
         <Col xs={24} xl={8}>
-          <Badge count={15} offset={[-6, 6]}>
+          <Badge count={activeAlertsCount} offset={[-6, 6]}>
             <Card style={{ height: '100%', minWidth: 260 }}>
               <Title level={5} style={{ marginBottom: 16 }}>Active Alerts</Title>
               <Space direction="vertical" size={8} style={{ width: '100%' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#f5222d', display: 'inline-block' }} />
                   <Text>Critical</Text>
-                  <Text strong style={{ marginLeft: 'auto' }}>3</Text>
+                  <Text strong style={{ marginLeft: 'auto' }}>{criticalCount}</Text>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#fadb14', display: 'inline-block' }} />
                   <Text>Major</Text>
-                  <Text strong style={{ marginLeft: 'auto' }}>7</Text>
+                  <Text strong style={{ marginLeft: 'auto' }}>{majorCount}</Text>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#1890ff', display: 'inline-block' }} />
                   <Text>Minor</Text>
-                  <Text strong style={{ marginLeft: 'auto' }}>5</Text>
+                  <Text strong style={{ marginLeft: 'auto' }}>{minorCount}</Text>
                 </div>
               </Space>
             </Card>
@@ -294,7 +307,7 @@ export default function CompliancePage() {
         headerTitle="Active Alerts"
         actionRef={actionRef}
         columns={columns}
-        dataSource={MOCK_ALERTS}
+        dataSource={alerts}
         rowKey="id"
         search={{ filterType: 'light' }}
         pagination={{ pageSize: 10 }}

@@ -14,6 +14,7 @@ import {
   Timeline,
   Typography,
   Space,
+  Spin,
   message,
   Divider,
   Progress,
@@ -40,6 +41,7 @@ import {
   NctsPageContainer,
   PrintButton,
 } from '@ncts/ui';
+import { usePermits, useUpdatePermitStatus } from '@ncts/api-client';
 
 dayjs.extend(relativeTime);
 
@@ -116,14 +118,35 @@ const TYPE_COLORS: Record<string, string> = {
 export default function PermitDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { data: permitsResponse, isLoading } = usePermits({ limit: 200 });
+  const { mutateAsync: updatePermitStatus, isPending: statusPending } = useUpdatePermitStatus();
 
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewDecision, setReviewDecision] = useState<'approve' | 'reject'>('approve');
   const [checkedItems, setCheckedItems] = useState<boolean[]>([false, false, false, false]);
   const [rejectReason, setRejectReason] = useState('');
 
-  // Mock: use static data keyed by ID
-  const permit = { ...MOCK_PERMIT, id: id ?? MOCK_PERMIT.id };
+  if (isLoading) return <div style={{display:'flex',justifyContent:'center',padding:'100px 0'}}><Spin size="large" /></div>;
+
+  // Try to find the permit from the live data, fall back to mock
+  const rawPermits = permitsResponse?.data?.data ?? permitsResponse?.data ?? [];
+  const matched = (rawPermits as any[]).find((p: any) => p.id === id);
+  const permit = matched
+    ? {
+        id: matched.id,
+        permitNumber: matched.permitNumber ?? matched.id,
+        operatorId: matched.tenantId ?? matched.operatorId ?? '',
+        operatorName: matched.tenant?.name ?? matched.operatorName ?? '',
+        type: (matched.permitType ?? matched.type ?? 'cultivation') as 'cultivation' | 'processing' | 'distribution' | 'retail' | 'research',
+        status: (matched.status ?? 'pending') as 'pending' | 'active' | 'suspended' | 'revoked' | 'expired',
+        issuedDate: matched.issuedDate ?? matched.createdAt ?? '',
+        expiryDate: matched.expiryDate ?? '',
+        province: matched.facility?.province ?? matched.province ?? '',
+        issuingAuthority: matched.issuingAuthority ?? 'SAHPRA',
+        complianceScore: matched.complianceScore ?? 0,
+        conditions: matched.conditions ?? '',
+      }
+    : { ...MOCK_PERMIT, id: id ?? MOCK_PERMIT.id };
   const status = permit.status as PermitStatus;
 
   const expiry = dayjs(permit.expiryDate);
@@ -210,15 +233,23 @@ export default function PermitDetailPage() {
   const reasonValid = reviewDecision === 'approve' || rejectReason.length >= 50;
   const canConfirm = allChecked && reasonValid;
 
-  const handleConfirmReview = () => {
+  const handleConfirmReview = async () => {
     if (!canConfirm) return;
-    message.success(
-      reviewDecision === 'approve'
-        ? 'Permit approved successfully – status updated.'
-        : 'Permit rejected – operator will be notified.',
-    );
+    try {
+      await updatePermitStatus({
+        id: permit.id,
+        status: reviewDecision === 'approve' ? 'active' : 'revoked',
+        notes: reviewDecision === 'reject' ? rejectReason : undefined,
+      });
+      message.success(
+        reviewDecision === 'approve'
+          ? 'Permit approved successfully – status updated.'
+          : 'Permit rejected – operator will be notified.',
+      );
+    } catch {
+      message.error('Failed to update permit status');
+    }
     setReviewModalOpen(false);
-    // TODO: call API to update permit status
   };
 
   /* ── Render ────────────────────────────────────────────────────── */

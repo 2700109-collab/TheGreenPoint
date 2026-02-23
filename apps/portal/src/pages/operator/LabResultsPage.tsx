@@ -4,7 +4,8 @@
  */
 
 import { useMemo, useRef } from 'react';
-import { Card, Row, Col, Tag, Button, Descriptions, Progress, Typography, Space, Divider } from 'antd';
+import { Card, Row, Col, Tag, Button, Descriptions, Progress, Typography, Space, Divider, Spin } from 'antd';
+import { useLabResults } from '@ncts/api-client';
 import { ProTable } from '@ant-design/pro-components';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import dayjs from 'dayjs';
@@ -65,124 +66,7 @@ interface LabResult {
 
 const THC_THRESHOLD = 20; // % — TODO: source from backend compliance config
 
-// ---------------------------------------------------------------------------
-// Mock Data — TODO: Replace with API hooks (e.g. useLabResults from @ncts/api-client)
-// ---------------------------------------------------------------------------
 
-const MOCK_LAB_RESULTS: LabResult[] = [
-  {
-    id: '1',
-    sampleId: 'LAB-20260115-001',
-    harvestId: 'HRV-20260110-AAA',
-    labName: 'CannaChem Labs',
-    submittedDate: '2026-01-15',
-    resultDate: '2026-01-20',
-    status: 'passed',
-    thcPercent: 18.4,
-    cbdPercent: 0.6,
-    cannabinoids: { thcPercent: 18.4, cbdPercent: 0.6, cbnPercent: 0.2, cbgPercent: 0.8 },
-    terpenes: { myrcene: 0.45, limonene: 0.32, pinene: 0.18 },
-    contaminants: { pesticides: true, heavyMetals: true, microbials: true, mycotoxins: true, residualSolvents: true },
-  },
-  {
-    id: '2',
-    sampleId: 'LAB-20260118-002',
-    harvestId: 'HRV-20260112-BBB',
-    labName: 'GreenTest SA',
-    submittedDate: '2026-01-18',
-    resultDate: '2026-01-24',
-    status: 'failed',
-    thcPercent: 22.7,
-    cbdPercent: 0.3,
-    cannabinoids: { thcPercent: 22.7, cbdPercent: 0.3, cbnPercent: 0.1, cbgPercent: 0.4 },
-    terpenes: { myrcene: 0.62, limonene: 0.15, pinene: 0.09 },
-    contaminants: { pesticides: false, heavyMetals: true, microbials: true, mycotoxins: false, residualSolvents: true },
-  },
-  {
-    id: '3',
-    sampleId: 'LAB-20260125-003',
-    harvestId: 'HRV-20260120-CCC',
-    labName: 'CannaChem Labs',
-    submittedDate: '2026-01-25',
-    resultDate: null,
-    status: 'pending',
-    thcPercent: 0,
-    cbdPercent: 0,
-    cannabinoids: { thcPercent: 0, cbdPercent: 0, cbnPercent: 0, cbgPercent: 0 },
-    terpenes: { myrcene: 0, limonene: 0, pinene: 0 },
-    contaminants: { pesticides: false, heavyMetals: false, microbials: false, mycotoxins: false, residualSolvents: false },
-  },
-  {
-    id: '4',
-    sampleId: 'LAB-20260130-004',
-    harvestId: 'HRV-20260128-DDD',
-    labName: 'PhytoLab Cape Town',
-    submittedDate: '2026-01-30',
-    resultDate: null,
-    status: 'in_progress',
-    thcPercent: 0,
-    cbdPercent: 0,
-    cannabinoids: { thcPercent: 0, cbdPercent: 0, cbnPercent: 0, cbgPercent: 0 },
-    terpenes: { myrcene: 0, limonene: 0, pinene: 0 },
-    contaminants: { pesticides: false, heavyMetals: false, microbials: false, mycotoxins: false, residualSolvents: false },
-  },
-  {
-    id: '5',
-    sampleId: 'LAB-20260202-005',
-    harvestId: 'HRV-20260201-EEE',
-    labName: 'GreenTest SA',
-    submittedDate: '2026-02-02',
-    resultDate: '2026-02-08',
-    status: 'passed',
-    thcPercent: 15.2,
-    cbdPercent: 7.8,
-    cannabinoids: { thcPercent: 15.2, cbdPercent: 7.8, cbnPercent: 0.5, cbgPercent: 1.1 },
-    terpenes: { myrcene: 0.38, limonene: 0.54, pinene: 0.27 },
-    contaminants: { pesticides: true, heavyMetals: true, microbials: true, mycotoxins: true, residualSolvents: true },
-  },
-  {
-    id: '6',
-    sampleId: 'LAB-20260210-006',
-    harvestId: 'HRV-20260208-FFF',
-    labName: 'PhytoLab Cape Town',
-    submittedDate: '2026-02-10',
-    resultDate: '2026-02-15',
-    status: 'passed',
-    thcPercent: 19.8,
-    cbdPercent: 1.2,
-    cannabinoids: { thcPercent: 19.8, cbdPercent: 1.2, cbnPercent: 0.3, cbgPercent: 0.6 },
-    terpenes: { myrcene: 0.51, limonene: 0.28, pinene: 0.14 },
-    contaminants: { pesticides: true, heavyMetals: true, microbials: true, mycotoxins: true, residualSolvents: true },
-  },
-  {
-    id: '7',
-    sampleId: 'LAB-20260215-007',
-    harvestId: 'HRV-20260213-GGG',
-    labName: 'CannaChem Labs',
-    submittedDate: '2026-02-15',
-    resultDate: '2026-02-19',
-    status: 'failed',
-    thcPercent: 24.1,
-    cbdPercent: 0.2,
-    cannabinoids: { thcPercent: 24.1, cbdPercent: 0.2, cbnPercent: 0.1, cbgPercent: 0.3 },
-    terpenes: { myrcene: 0.71, limonene: 0.11, pinene: 0.05 },
-    contaminants: { pesticides: true, heavyMetals: false, microbials: true, mycotoxins: true, residualSolvents: false },
-  },
-  {
-    id: '8',
-    sampleId: 'LAB-20260220-008',
-    harvestId: 'HRV-20260218-HHH',
-    labName: 'GreenTest SA',
-    submittedDate: '2026-02-20',
-    resultDate: null,
-    status: 'in_progress',
-    thcPercent: 0,
-    cbdPercent: 0,
-    cannabinoids: { thcPercent: 0, cbdPercent: 0, cbnPercent: 0, cbgPercent: 0 },
-    terpenes: { myrcene: 0, limonene: 0, pinene: 0 },
-    contaminants: { pesticides: false, heavyMetals: false, microbials: false, mycotoxins: false, residualSolvents: false },
-  },
-];
 
 // ---------------------------------------------------------------------------
 // CSV columns for export
@@ -346,8 +230,10 @@ function ExpandedRow({ record }: { record: LabResult }) {
 export default function LabResultsPage() {
   const actionRef = useRef<ActionType>(undefined);
 
-  // TODO: Replace with real data-fetching hook
-  const data = useMemo(() => MOCK_LAB_RESULTS, []);
+  const { data: labResultsResponse, isLoading, refetch } = useLabResults();
+  const data = useMemo(() => (labResultsResponse as any)?.data ?? labResultsResponse ?? [], [labResultsResponse]);
+
+  if (isLoading) return <div style={{display:'flex',justifyContent:'center',padding:'100px 0'}}><Spin size="large" /></div>;
 
   // ── ProTable Column Definitions ────────────────────────────────────────
   const columns = useMemo<ProColumns<LabResult>[]>(
@@ -494,7 +380,7 @@ export default function LabResultsPage() {
           <DataFreshness
             lastUpdated={new Date().toISOString()}
             onRefresh={() => {
-              /* TODO: invalidate react-query cache */
+              refetch();
               actionRef.current?.reload();
             }}
           />
@@ -511,7 +397,7 @@ export default function LabResultsPage() {
           density: true,
           fullScreen: true,
           reload: () => {
-            /* TODO: re-fetch from API */
+            refetch();
             actionRef.current?.reload();
           },
           setting: true,

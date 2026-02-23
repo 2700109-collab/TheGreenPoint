@@ -6,7 +6,7 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import {
   Button, Drawer, Form, Tag, Space, message, Select, DatePicker,
-  InputNumber, Input, Typography, Divider, Dropdown, Table,
+  InputNumber, Input, Typography, Divider, Dropdown, Table, Spin,
 } from 'antd';
 import type { MenuProps } from 'antd';
 import { ProTable } from '@ant-design/pro-components';
@@ -14,6 +14,7 @@ import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import dayjs from 'dayjs';
 import { Plus, ShoppingCart, Eye, FileText, XCircle, MoreVertical } from 'lucide-react';
 import { StatusBadge, TrackingId, NctsPageContainer, CsvExportButton } from '@ncts/ui';
+import { useSales, useRecordSale, useBatches } from '@ncts/api-client';
 
 const { Text } = Typography;
 
@@ -47,69 +48,7 @@ interface AvailableProduct {
   unitPrice: number;
 }
 
-// ---------------------------------------------------------------------------
-// Mock Data — TODO: Replace with API hooks (e.g. useSales from @ncts/api-client)
-// ---------------------------------------------------------------------------
 
-const MOCK_SALES: Sale[] = [
-  {
-    id: 'sale-1', trackingId: 'SAL-20260110-AAA', buyerName: 'Verdant Wellness CC',
-    buyerLicense: 'LIC-GP-0012', productSummary: 'Durban Poison (dried flower)',
-    totalQuantity: 500, quantityUnit: 'g', totalValue: 35000, saleDate: '2026-01-10',
-    status: 'completed', paymentMethod: 'bank_transfer', invoiceNumber: 'INV-2026-001', notes: '',
-  },
-  {
-    id: 'sale-2', trackingId: 'SAL-20260118-BBB', buyerName: 'Highveld Dispensary',
-    buyerLicense: 'LIC-GP-0045', productSummary: 'Swazi Gold (pre-rolls x50)',
-    totalQuantity: 50, quantityUnit: 'units', totalValue: 12500, saleDate: '2026-01-18',
-    status: 'invoiced', paymentMethod: 'eft', invoiceNumber: 'INV-2026-002', notes: 'Bulk order',
-  },
-  {
-    id: 'sale-3', trackingId: 'SAL-20260125-CCC', buyerName: 'Cape Herbalist (Pty) Ltd',
-    buyerLicense: 'LIC-WC-0089', productSummary: 'Rooibaard + Purple Haze (mixed)',
-    totalQuantity: 1200, quantityUnit: 'g', totalValue: 78000, saleDate: '2026-01-25',
-    status: 'completed', paymentMethod: 'bank_transfer', invoiceNumber: 'INV-2026-003', notes: 'Repeat client',
-  },
-  {
-    id: 'sale-4', trackingId: 'SAL-20260202-DDD', buyerName: 'Jozi Natural Remedies',
-    buyerLicense: 'LIC-GP-0103', productSummary: 'Power Flower (dried flower)',
-    totalQuantity: 300, quantityUnit: 'g', totalValue: 24000, saleDate: '2026-02-02',
-    status: 'pending', paymentMethod: 'cash', invoiceNumber: null, notes: 'Awaiting payment confirmation',
-  },
-  {
-    id: 'sale-5', trackingId: 'SAL-20260210-EEE', buyerName: 'Garden Route Organics',
-    buyerLicense: 'LIC-EC-0034', productSummary: 'Durban Poison (oil extract)',
-    totalQuantity: 200, quantityUnit: 'g', totalValue: 56000, saleDate: '2026-02-10',
-    status: 'dispatched', paymentMethod: 'eft', invoiceNumber: 'INV-2026-005', notes: '',
-  },
-  {
-    id: 'sale-6', trackingId: 'SAL-20260214-FFF', buyerName: 'Verdant Wellness CC',
-    buyerLicense: 'LIC-GP-0012', productSummary: 'Swazi Gold (dried flower)',
-    totalQuantity: 750, quantityUnit: 'g', totalValue: 48750, saleDate: '2026-02-14',
-    status: 'void', paymentMethod: 'bank_transfer', invoiceNumber: 'INV-2026-006', notes: 'Voided — buyer cancelled',
-  },
-  {
-    id: 'sale-7', trackingId: 'SAL-20260218-GGG', buyerName: 'Highveld Dispensary',
-    buyerLicense: 'LIC-GP-0045', productSummary: 'Purple Haze (pre-rolls x100)',
-    totalQuantity: 100, quantityUnit: 'units', totalValue: 22000, saleDate: '2026-02-18',
-    status: 'draft', paymentMethod: 'eft', invoiceNumber: null, notes: 'Draft — pending buyer confirmation',
-  },
-  {
-    id: 'sale-8', trackingId: 'SAL-20260220-HHH', buyerName: 'Cape Herbalist (Pty) Ltd',
-    buyerLicense: 'LIC-WC-0089', productSummary: 'Rooibaard (dried flower)',
-    totalQuantity: 400, quantityUnit: 'g', totalValue: 30000, saleDate: '2026-02-20',
-    status: 'completed', paymentMethod: 'cash', invoiceNumber: 'INV-2026-008', notes: '',
-  },
-];
-
-// TODO: Replace with API call to fetch available products
-const MOCK_PRODUCTS: AvailableProduct[] = [
-  { id: 'prod-1', trackingId: 'HRV-20260115-AAA', strain: 'Durban Poison', availableQty: 2400, unitPrice: 70 },
-  { id: 'prod-2', trackingId: 'HRV-20260120-BBB', strain: 'Swazi Gold', availableQty: 1800, unitPrice: 65 },
-  { id: 'prod-3', trackingId: 'HRV-20260201-CCC', strain: 'Purple Haze', availableQty: 950, unitPrice: 85 },
-  { id: 'prod-4', trackingId: 'HRV-20260205-DDD', strain: 'Rooibaard', availableQty: 3100, unitPrice: 75 },
-  { id: 'prod-5', trackingId: 'HRV-20260210-EEE', strain: 'Power Flower', availableQty: 1500, unitPrice: 80 },
-];
 
 // ---------------------------------------------------------------------------
 // CSV columns
@@ -152,16 +91,35 @@ export default function SalesPage() {
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [productPrices, setProductPrices] = useState<Record<string, number>>({});
 
+  const { data: salesResponse, isLoading, refetch } = useSales();
+  const sales: Sale[] = ((salesResponse as any)?.data ?? salesResponse ?? []) as Sale[];
+
+  const { data: batchesResponse } = useBatches();
+  const products: AvailableProduct[] = useMemo(() => {
+    const raw: any[] = (batchesResponse as any)?.data ?? batchesResponse ?? [];
+    return raw.map((b: any) => ({
+      id: b.id,
+      trackingId: b.trackingId ?? b.id,
+      strain: b.strain ?? '',
+      availableQty: b.availableQty ?? b.quantity ?? 0,
+      unitPrice: b.unitPrice ?? 0,
+    }));
+  }, [batchesResponse]);
+
+  const recordSale = useRecordSale();
+
+  if (isLoading) return <div style={{display:'flex',justifyContent:'center',padding:'100px 0'}}><Spin size="large" /></div>;
+
   // -- Computed values --------------------------------------------------------
 
   const totalRevenue = useMemo(
-    () => MOCK_SALES.filter((s) => s.status !== 'void').reduce((sum, s) => sum + s.totalValue, 0),
-    [],
+    () => sales.filter((s) => s.status !== 'void').reduce((sum, s) => sum + s.totalValue, 0),
+    [sales],
   );
 
   const selectedProducts = useMemo(
-    () => MOCK_PRODUCTS.filter((p) => selectedProductIds.includes(p.id)),
-    [selectedProductIds],
+    () => products.filter((p) => selectedProductIds.includes(p.id)),
+    [selectedProductIds, products],
   );
 
   const computedTotal = useMemo(() => {
@@ -193,17 +151,22 @@ export default function SalesPage() {
         message.warning('Please select at least one product');
         return;
       }
-      // TODO: Call API to record sale
+      const values = form.getFieldsValue();
+      await recordSale.mutateAsync({
+        ...values,
+        products: selectedProductIds,
+      } as any);
       message.success('Sale recorded successfully');
       setDrawerOpen(false);
       form.resetFields();
       setSelectedProductIds([]);
       setProductPrices({});
-      actionRef.current?.reload();
-    } catch {
-      // validation errors shown inline
+      refetch();
+    } catch (err: any) {
+      if (err?.errorFields) return; // validation errors shown inline
+      message.error(err?.message ?? 'Failed to record sale');
     }
-  }, [form, selectedProductIds]);
+  }, [form, selectedProductIds, recordSale, refetch]);
 
   const handleBuyerLicenseChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -363,10 +326,10 @@ export default function SalesPage() {
   return (
     <NctsPageContainer
       title="Sales"
-      subTitle={`${MOCK_SALES.length} sales · Total revenue: ${formatZAR(totalRevenue)}`}
+      subTitle={`${sales.length} sales · Total revenue: ${formatZAR(totalRevenue)}`}
       extra={
         <Space>
-          <CsvExportButton data={MOCK_SALES} columns={CSV_COLUMNS} filename="sales-export" />
+          <CsvExportButton data={sales} columns={CSV_COLUMNS} filename="sales-export" />
           <Button type="primary" onClick={handleOpenDrawer} icon={<Plus size={16} />}>
             <Space size={4} style={{ marginLeft: 2 }}>
               <ShoppingCart size={14} />
@@ -379,7 +342,7 @@ export default function SalesPage() {
       <ProTable<Sale>
         actionRef={actionRef}
         columns={columns}
-        dataSource={MOCK_SALES}
+        dataSource={sales}
         rowKey="id"
         search={false}
         options={{ density: true, fullScreen: true, reload: true, setting: true }}
@@ -457,7 +420,7 @@ export default function SalesPage() {
           </Text>
 
           <Table<AvailableProduct>
-            dataSource={MOCK_PRODUCTS}
+            dataSource={products}
             columns={productColumns}
             rowKey="id"
             size="small"

@@ -5,7 +5,7 @@
 
 import React, { useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dropdown, Tabs, Tag } from 'antd';
+import { Dropdown, Spin, Tabs, Tag } from 'antd';
 import type { MenuProps } from 'antd';
 import { ProTable } from '@ant-design/pro-components';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
@@ -24,6 +24,7 @@ import {
   CsvExportButton,
   DataFreshness,
 } from '@ncts/ui';
+import { usePermits } from '@ncts/api-client';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -58,71 +59,8 @@ const TYPE_COLOR: Record<PermitType, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// Mock Data — 10 permits
+// Mock Data DELETED — now using usePermits() hook
 // ---------------------------------------------------------------------------
-
-const MOCK_PERMITS: Permit[] = [
-  {
-    id: 'pm-1', permitNumber: 'PRM-20250210-GRN', operatorId: 'op-1',
-    operatorName: 'GreenLeaf Holdings', type: 'cultivation', status: 'active',
-    issuedDate: '2025-02-10', expiryDate: '2026-08-10',
-    conditionsCount: 5, unmetConditions: 0, province: 'Gauteng',
-  },
-  {
-    id: 'pm-2', permitNumber: 'PRM-20250318-CCC', operatorId: 'op-2',
-    operatorName: 'Cape Cannabis Co', type: 'processing', status: 'active',
-    issuedDate: '2025-03-18', expiryDate: '2026-03-18',
-    conditionsCount: 8, unmetConditions: 1, province: 'Western Cape',
-  },
-  {
-    id: 'pm-3', permitNumber: 'PRM-20250405-DBL', operatorId: 'op-3',
-    operatorName: 'Durban Botanicals', type: 'distribution', status: 'pending',
-    issuedDate: '2025-04-05', expiryDate: '2026-04-05',
-    conditionsCount: 4, unmetConditions: 2, province: 'KwaZulu-Natal',
-  },
-  {
-    id: 'pm-4', permitNumber: 'PRM-20250512-HVG', operatorId: 'op-4',
-    operatorName: 'Highveld Growers', type: 'cultivation', status: 'suspended',
-    issuedDate: '2025-05-12', expiryDate: '2026-05-12',
-    conditionsCount: 6, unmetConditions: 3, province: 'Mpumalanga',
-  },
-  {
-    id: 'pm-5', permitNumber: 'PRM-20250619-ERT', operatorId: 'op-5',
-    operatorName: 'Eastern Roots Trading', type: 'distribution', status: 'active',
-    issuedDate: '2025-06-19', expiryDate: '2026-12-19',
-    conditionsCount: 3, unmetConditions: 0, province: 'Eastern Cape',
-  },
-  {
-    id: 'pm-6', permitNumber: 'PRM-20250703-FSE', operatorId: 'op-6',
-    operatorName: 'Free State Extracts', type: 'processing', status: 'revoked',
-    issuedDate: '2025-07-03', expiryDate: '2026-07-03',
-    conditionsCount: 7, unmetConditions: 5, province: 'Free State',
-  },
-  {
-    id: 'pm-7', permitNumber: 'PRM-20250820-LLI', operatorId: 'op-7',
-    operatorName: 'Limpopo Leaf Industries', type: 'cultivation', status: 'active',
-    issuedDate: '2025-08-20', expiryDate: '2026-04-01',
-    conditionsCount: 4, unmetConditions: 0, province: 'Limpopo',
-  },
-  {
-    id: 'pm-8', permitNumber: 'PRM-20250910-GRD', operatorId: 'op-8',
-    operatorName: 'Garden Route Dispensary', type: 'retail', status: 'pending',
-    issuedDate: '2025-09-10', expiryDate: '2026-09-10',
-    conditionsCount: 5, unmetConditions: 1, province: 'Western Cape',
-  },
-  {
-    id: 'pm-9', permitNumber: 'PRM-20251015-NWN', operatorId: 'op-9',
-    operatorName: 'North West Naturals', type: 'cultivation', status: 'expired',
-    issuedDate: '2024-10-15', expiryDate: '2025-10-15',
-    conditionsCount: 6, unmetConditions: 4, province: 'North West',
-  },
-  {
-    id: 'pm-10', permitNumber: 'PRM-20251128-PPL', operatorId: 'op-10',
-    operatorName: 'Pretoria Phyto Labs', type: 'processing', status: 'expired',
-    issuedDate: '2024-11-28', expiryDate: '2026-02-01',
-    conditionsCount: 3, unmetConditions: 2, province: 'Gauteng',
-  },
-];
 
 // ---------------------------------------------------------------------------
 // CSV export column config
@@ -185,31 +123,48 @@ function expiryLabel(expiryDate: string): React.ReactNode {
 export default function PermitsPage() {
   const actionRef = useRef<ActionType>(undefined);
   const navigate = useNavigate();
+  const { data: permitsResponse, isLoading } = usePermits({ limit: 100 });
+
+  const permits: Permit[] = (permitsResponse?.data?.data ?? permitsResponse?.data ?? []).map((p: any) => ({
+    id: p.id,
+    permitNumber: p.permitNumber ?? p.id,
+    operatorId: p.tenantId ?? p.operatorId ?? '',
+    operatorName: p.tenant?.name ?? p.operatorName ?? '',
+    type: (p.permitType ?? p.type ?? 'cultivation') as PermitType,
+    status: (p.status ?? 'pending') as PermitStatus,
+    issuedDate: p.issuedDate ?? p.createdAt ?? '',
+    expiryDate: p.expiryDate ?? '',
+    conditionsCount: p.conditionsCount ?? 0,
+    unmetConditions: p.unmetConditions ?? 0,
+    province: p.facility?.province ?? p.province ?? '',
+  }));
+
+  if (isLoading) return <div style={{display:'flex',justifyContent:'center',padding:'100px 0'}}><Spin size="large" /></div>;
 
   // -- Tab counts -------------------------------------------------------------
   const counts = useMemo(() => {
-    const total = MOCK_PERMITS.length;
-    const pending = MOCK_PERMITS.filter((p) => p.status === 'pending').length;
-    const active = MOCK_PERMITS.filter((p) => p.status === 'active').length;
-    const expired = MOCK_PERMITS.filter((p) => p.status === 'expired').length;
-    const suspendedRevoked = MOCK_PERMITS.filter(
+    const total = permits.length;
+    const pending = permits.filter((p) => p.status === 'pending').length;
+    const active = permits.filter((p) => p.status === 'active').length;
+    const expired = permits.filter((p) => p.status === 'expired').length;
+    const suspendedRevoked = permits.filter(
       (p) => p.status === 'suspended' || p.status === 'revoked',
     ).length;
     return { total, pending, active, expired, suspendedRevoked };
-  }, []);
+  }, [permits]);
 
   // -- Tab filter state -------------------------------------------------------
   const [activeTab, setActiveTab] = React.useState<string>('all');
 
   const filteredData = useMemo(() => {
-    if (activeTab === 'all') return MOCK_PERMITS;
+    if (activeTab === 'all') return permits;
     if (activeTab === 'suspended_revoked') {
-      return MOCK_PERMITS.filter(
+      return permits.filter(
         (p) => p.status === 'suspended' || p.status === 'revoked',
       );
     }
-    return MOCK_PERMITS.filter((p) => p.status === activeTab);
-  }, [activeTab]);
+    return permits.filter((p) => p.status === activeTab);
+  }, [activeTab, permits]);
 
   // -- Action dropdown builder ------------------------------------------------
   const buildActions = (record: Permit): MenuProps['items'] => {
@@ -378,7 +333,7 @@ export default function PermitsPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <DataFreshness lastUpdated={new Date().toISOString()} />
           <CsvExportButton
-            data={MOCK_PERMITS}
+            data={permits}
             columns={CSV_COLUMNS}
             filename="permits-export"
           />

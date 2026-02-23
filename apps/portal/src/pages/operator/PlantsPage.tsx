@@ -6,7 +6,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Tabs, Dropdown, Modal, Upload, Table, Space, Descriptions, Typography } from 'antd';
+import { Button, Tabs, Dropdown, Modal, Upload, Table, Space, Descriptions, Typography, Spin } from 'antd';
 import type { MenuProps, TabsProps } from 'antd';
 import { ProTable } from '@ant-design/pro-components';
 import type { ProColumns } from '@ant-design/pro-components';
@@ -21,6 +21,7 @@ import {
   CsvExportButton,
 } from '@ncts/ui';
 import type { PlantStage, LifecycleStageInfo } from '@ncts/ui';
+import { usePlants } from '@ncts/api-client';
 
 dayjs.extend(relativeTime);
 
@@ -45,210 +46,6 @@ interface Plant {
   notes: string;
   stages: LifecycleStageInfo[];
 }
-
-// ---------------------------------------------------------------------------
-// Mock Data — TODO: Replace with API hooks (e.g. usePlants from @ncts/api-client)
-// ---------------------------------------------------------------------------
-
-const MOCK_PLANTS: Plant[] = [
-  {
-    id: '1',
-    trackingId: 'PLT-20260101-AAA',
-    strain: 'Purple Haze',
-    currentStage: 'flowering',
-    facilityId: 'fac-1',
-    facilityName: 'Cape Town Facility',
-    plantedDate: '2025-11-15',
-    stageStartDate: '2026-01-20',
-    updatedAt: '2026-02-20T14:30:00Z',
-    batchId: 'BTH-20251115-001',
-    motherPlantId: 'PLT-20251001-XYZ',
-    notes: 'Showing strong trichome development',
-    stages: [
-      { stage: 'seed', date: '2025-11-15' },
-      { stage: 'seedling', date: '2025-11-28' },
-      { stage: 'vegetative', date: '2025-12-20' },
-      { stage: 'flowering', date: '2026-01-20' },
-    ],
-  },
-  {
-    id: '2',
-    trackingId: 'PLT-20260102-BBB',
-    strain: 'Durban Poison',
-    currentStage: 'vegetative',
-    facilityId: 'fac-1',
-    facilityName: 'Cape Town Facility',
-    plantedDate: '2025-12-10',
-    stageStartDate: '2026-01-15',
-    updatedAt: '2026-02-19T09:15:00Z',
-    batchId: 'BTH-20251210-002',
-    motherPlantId: null,
-    notes: 'Healthy growth, strong branching',
-    stages: [
-      { stage: 'seed', date: '2025-12-10' },
-      { stage: 'seedling', date: '2025-12-24' },
-      { stage: 'vegetative', date: '2026-01-15' },
-    ],
-  },
-  {
-    id: '3',
-    trackingId: 'PLT-20260103-CCC',
-    strain: 'Swazi Gold',
-    currentStage: 'seedling',
-    facilityId: 'fac-2',
-    facilityName: 'Johannesburg Grow House',
-    plantedDate: '2026-01-28',
-    stageStartDate: '2026-02-10',
-    updatedAt: '2026-02-21T08:00:00Z',
-    batchId: 'BTH-20260128-003',
-    motherPlantId: null,
-    notes: 'Recently transplanted',
-    stages: [
-      { stage: 'seed', date: '2026-01-28' },
-      { stage: 'seedling', date: '2026-02-10' },
-    ],
-  },
-  {
-    id: '4',
-    trackingId: 'PLT-20260104-DDD',
-    strain: 'Malawi Gold',
-    currentStage: 'harvested',
-    facilityId: 'fac-1',
-    facilityName: 'Cape Town Facility',
-    plantedDate: '2025-08-01',
-    stageStartDate: '2026-01-05',
-    updatedAt: '2026-01-05T16:45:00Z',
-    batchId: 'BTH-20250801-004',
-    motherPlantId: 'PLT-20250701-MWG',
-    notes: 'Excellent yield — 420g dry weight',
-    stages: [
-      { stage: 'seed', date: '2025-08-01' },
-      { stage: 'seedling', date: '2025-08-14' },
-      { stage: 'vegetative', date: '2025-09-10' },
-      { stage: 'flowering', date: '2025-10-25' },
-      { stage: 'harvested', date: '2026-01-05' },
-    ],
-  },
-  {
-    id: '5',
-    trackingId: 'PLT-20260105-EEE',
-    strain: 'Rooibaard',
-    currentStage: 'destroyed',
-    facilityId: 'fac-2',
-    facilityName: 'Johannesburg Grow House',
-    plantedDate: '2025-09-20',
-    stageStartDate: '2025-12-01',
-    updatedAt: '2025-12-01T11:00:00Z',
-    batchId: 'BTH-20250920-005',
-    motherPlantId: null,
-    notes: 'Destroyed due to mould contamination',
-    stages: [
-      { stage: 'seed', date: '2025-09-20' },
-      { stage: 'seedling', date: '2025-10-05' },
-      { stage: 'vegetative', date: '2025-11-01' },
-      { stage: 'destroyed', date: '2025-12-01' },
-    ],
-  },
-  {
-    id: '6',
-    trackingId: 'PLT-20260106-FFF',
-    strain: 'Power Flower',
-    currentStage: 'flowering',
-    facilityId: 'fac-3',
-    facilityName: 'Durban Indoor Farm',
-    plantedDate: '2025-10-10',
-    stageStartDate: '2026-01-08',
-    updatedAt: '2026-02-18T17:20:00Z',
-    batchId: 'BTH-20251010-006',
-    motherPlantId: null,
-    notes: 'Dense bud formation observed',
-    stages: [
-      { stage: 'seed', date: '2025-10-10' },
-      { stage: 'seedling', date: '2025-10-25' },
-      { stage: 'vegetative', date: '2025-11-20' },
-      { stage: 'flowering', date: '2026-01-08' },
-    ],
-  },
-  {
-    id: '7',
-    trackingId: 'PLT-20260107-GGG',
-    strain: 'Purple Haze',
-    currentStage: 'vegetative',
-    facilityId: 'fac-3',
-    facilityName: 'Durban Indoor Farm',
-    plantedDate: '2025-12-25',
-    stageStartDate: '2026-01-25',
-    updatedAt: '2026-02-20T10:05:00Z',
-    batchId: 'BTH-20251225-007',
-    motherPlantId: 'PLT-20260101-AAA',
-    notes: 'Clone from top performer',
-    stages: [
-      { stage: 'seed', date: '2025-12-25' },
-      { stage: 'seedling', date: '2026-01-10' },
-      { stage: 'vegetative', date: '2026-01-25' },
-    ],
-  },
-  {
-    id: '8',
-    trackingId: 'PLT-20260108-HHH',
-    strain: 'Durban Poison',
-    currentStage: 'harvested',
-    facilityId: 'fac-1',
-    facilityName: 'Cape Town Facility',
-    plantedDate: '2025-07-15',
-    stageStartDate: '2025-12-20',
-    updatedAt: '2025-12-20T13:30:00Z',
-    batchId: 'BTH-20250715-008',
-    motherPlantId: null,
-    notes: 'Harvested — sent to lab for testing',
-    stages: [
-      { stage: 'seed', date: '2025-07-15' },
-      { stage: 'seedling', date: '2025-07-28' },
-      { stage: 'vegetative', date: '2025-08-25' },
-      { stage: 'flowering', date: '2025-10-10' },
-      { stage: 'harvested', date: '2025-12-20' },
-    ],
-  },
-  {
-    id: '9',
-    trackingId: 'PLT-20260109-III',
-    strain: 'Swazi Gold',
-    currentStage: 'seedling',
-    facilityId: 'fac-2',
-    facilityName: 'Johannesburg Grow House',
-    plantedDate: '2026-02-01',
-    stageStartDate: '2026-02-14',
-    updatedAt: '2026-02-21T07:50:00Z',
-    batchId: 'BTH-20260201-009',
-    motherPlantId: null,
-    notes: 'New batch — monitoring closely',
-    stages: [
-      { stage: 'seed', date: '2026-02-01' },
-      { stage: 'seedling', date: '2026-02-14' },
-    ],
-  },
-  {
-    id: '10',
-    trackingId: 'PLT-20260110-JJJ',
-    strain: 'Amnesia Haze',
-    currentStage: 'destroyed',
-    facilityId: 'fac-3',
-    facilityName: 'Durban Indoor Farm',
-    plantedDate: '2025-06-01',
-    stageStartDate: '2025-10-15',
-    updatedAt: '2025-10-15T09:00:00Z',
-    batchId: 'BTH-20250601-010',
-    motherPlantId: null,
-    notes: 'Regulatory destruction — compliance order',
-    stages: [
-      { stage: 'seed', date: '2025-06-01' },
-      { stage: 'seedling', date: '2025-06-15' },
-      { stage: 'vegetative', date: '2025-07-12' },
-      { stage: 'flowering', date: '2025-08-30' },
-      { stage: 'destroyed', date: '2025-10-15' },
-    ],
-  },
-];
 
 const ACTIVE_STAGES: PlantStage[] = ['seedling', 'vegetative', 'flowering'];
 
@@ -284,8 +81,10 @@ export default function PlantsPage() {
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [importFileList, setImportFileList] = useState<any[]>([]);
 
-  // TODO: Replace with real API hook — e.g. const { data, isLoading } = usePlants(params);
-  const allPlants = MOCK_PLANTS;
+  const { data: plantsResponse, isLoading } = usePlants();
+  const allPlants: Plant[] = ((plantsResponse as any)?.data ?? plantsResponse ?? []) as Plant[];
+
+  if (isLoading) return <div style={{display:'flex',justifyContent:'center',padding:'100px 0'}}><Spin size="large" /></div>;
 
   // Derived counts
   const totalCount = allPlants.length;

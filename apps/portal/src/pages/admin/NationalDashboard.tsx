@@ -7,85 +7,27 @@
  * TODO: Replace all mock data with live API calls once endpoints are ready.
  */
 
-import { Card, Col, Row, Table, Tag, Timeline, Progress } from 'antd';
+import { Card, Col, Row, Spin, Table, Tag, Timeline, Progress } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   Users,
   FileCheck,
   Sprout,
   Truck,
-  DollarSign,
   ShieldCheck,
-  UserPlus,
   AlertTriangle,
-  FileText,
-  ClipboardCheck,
 } from 'lucide-react';
 import { NctsPageContainer, DataFreshness, StatCard, CHART_COLORS } from '@ncts/ui';
 import { Pie, Column as ColumnChart } from '@ant-design/charts';
+import {
+  useRegulatoryDashboard,
+  useRegulatoryTrends,
+  useComplianceAlerts,
+} from '@ncts/api-client';
 
 // ---------------------------------------------------------------------------
-// Mock data — TODO: replace with API hooks
+// Static chart data (no backend endpoint yet)
 // ---------------------------------------------------------------------------
-
-/** KPI definitions for the top stat strip */
-const KPI_DATA = [
-  {
-    label: 'Total Operators',
-    value: '127',
-    icon: <Users size={20} />,
-    iconBgColor: '#E6F0FF',
-    trend: 'up' as const,
-    changePercent: 8.5,
-    changePeriod: 'vs last month',
-  },
-  {
-    label: 'Active Permits',
-    value: '312',
-    icon: <FileCheck size={20} />,
-    iconBgColor: '#E6F5EF',
-    trend: 'up' as const,
-    changePercent: 5.2,
-    changePeriod: 'vs last month',
-  },
-  {
-    label: 'Total Plants Tracked',
-    value: '18,456',
-    icon: <Sprout size={20} />,
-    iconBgColor: '#E6F5EF',
-    trend: 'up' as const,
-    changePercent: 12.1,
-    changePeriod: 'vs last month',
-  },
-  {
-    label: 'Active Transfers',
-    value: '89',
-    icon: <Truck size={20} />,
-    iconBgColor: '#FFF7E6',
-    trend: 'down' as const,
-    changePercent: 3.4,
-    changePeriod: 'vs last month',
-  },
-  {
-    label: 'Monthly Revenue',
-    value: 'R 4.2M',
-    icon: <DollarSign size={20} />,
-    iconBgColor: '#E6F0FF',
-    trend: 'up' as const,
-    changePercent: 15.7,
-    changePeriod: 'vs last month',
-  },
-  {
-    label: 'Avg Compliance Score',
-    value: '92%',
-    icon: <ShieldCheck size={20} />,
-    // Traffic-light green background for high compliance
-    iconBgColor: '#E6F5EF',
-    trend: 'up' as const,
-    changePercent: 1.8,
-    changePeriod: 'vs last month',
-  },
-];
 
 /** Province abbreviations and facility counts for the map summary bar */
 const PROVINCE_FACILITIES: { abbr: string; count: number; color: string }[] = [
@@ -100,7 +42,7 @@ const PROVINCE_FACILITIES: { abbr: string; count: number; color: string }[] = [
   { abbr: 'NC', count: 3, color: 'gold' },
 ];
 
-/** Supply chain Column chart data */
+/** Supply chain Column chart data (static — no endpoint yet) */
 const SUPPLY_CHAIN_DATA = [
   { stage: 'Cultivated', count: 18456 },
   { stage: 'Tested', count: 14230 },
@@ -108,7 +50,7 @@ const SUPPLY_CHAIN_DATA = [
   { stage: 'Sold', count: 9842 },
 ];
 
-/** Plant lifecycle donut chart data */
+/** Plant lifecycle donut chart data (static — no endpoint yet) */
 const LIFECYCLE_DATA = [
   { type: 'Seedling', value: 3200 },
   { type: 'Vegetative', value: 5800 },
@@ -117,7 +59,7 @@ const LIFECYCLE_DATA = [
   { type: 'Destroyed', value: 1756 },
 ];
 
-/** Compliance-by-province table data */
+/** Compliance-by-province table data (static — no endpoint yet) */
 interface ProvinceCompliance {
   key: string;
   province: string;
@@ -126,7 +68,6 @@ interface ProvinceCompliance {
   activeAlerts: number;
 }
 
-// TODO: Fetch from /api/v1/regulatory/compliance-by-province
 const PROVINCE_COMPLIANCE: ProvinceCompliance[] = [
   { key: 'WC', province: 'Western Cape', operators: 45, avgScore: 96, activeAlerts: 2 },
   { key: 'GP', province: 'Gauteng', operators: 38, avgScore: 91, activeAlerts: 5 },
@@ -137,34 +78,6 @@ const PROVINCE_COMPLIANCE: ProvinceCompliance[] = [
   { key: 'MP', province: 'Mpumalanga', operators: 10, avgScore: 90, activeAlerts: 2 },
   { key: 'NW', province: 'North West', operators: 7, avgScore: 82, activeAlerts: 3 },
   { key: 'NC', province: 'Northern Cape', operators: 3, avgScore: 97, activeAlerts: 0 },
-];
-
-/** Recent system activity items */
-const ACTIVITY_ITEMS = [
-  {
-    dot: <UserPlus size={16} style={{ color: '#1890FF' }} />,
-    children: 'New operator registered: GreenFields Cannabis (Pty) Ltd',
-  },
-  {
-    dot: <FileCheck size={16} style={{ color: '#52C41A' }} />,
-    children: 'Permit PRM-20260221-X7Y8 approved',
-  },
-  {
-    dot: <AlertTriangle size={16} style={{ color: '#FF4D4F' }} />,
-    children: 'Compliance alert: Unaccounted plant loss at Facility FAC-20260101-AB12',
-  },
-  {
-    dot: <Truck size={16} style={{ color: '#D48806' }} />,
-    children: 'Transfer TRF-20260221-M5N6 completed',
-  },
-  {
-    dot: <FileText size={16} style={{ color: '#722ED1' }} />,
-    children: 'Monthly report submitted by ABC Cannabis',
-  },
-  {
-    dot: <ClipboardCheck size={16} style={{ color: '#13C2C2' }} />,
-    children: 'Inspection scheduled at Cape Town Grow',
-  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -230,6 +143,81 @@ const complianceColumns: ColumnsType<ProvinceCompliance> = [
 // ---------------------------------------------------------------------------
 
 export default function NationalDashboard() {
+  const { data: dashboard, isLoading: dashLoading } = useRegulatoryDashboard();
+  const { data: trends, isLoading: trendsLoading } = useRegulatoryTrends();
+  const { data: alertsPage, isLoading: alertsLoading } = useComplianceAlerts({ limit: 10 });
+
+  const isLoading = dashLoading || trendsLoading || alertsLoading;
+
+  if (isLoading) return <div style={{display:'flex',justifyContent:'center',padding:'100px 0'}}><Spin size="large" /></div>;
+
+  const db = dashboard?.data ?? dashboard;
+  const alertItems = alertsPage?.data?.data ?? alertsPage?.data ?? [];
+  const trendData = trends?.data ?? trends ?? [];
+
+  // Build KPI strip from live dashboard data
+  const KPI_DATA = [
+    {
+      label: 'Total Operators',
+      value: String(db?.totalOperators ?? 0),
+      icon: <Users size={20} />,
+      iconBgColor: '#E6F0FF',
+      trend: 'up' as const,
+      changePercent: 0,
+      changePeriod: '',
+    },
+    {
+      label: 'Active Permits',
+      value: String(db?.activePermits ?? 0),
+      icon: <FileCheck size={20} />,
+      iconBgColor: '#E6F5EF',
+      trend: 'up' as const,
+      changePercent: 0,
+      changePeriod: '',
+    },
+    {
+      label: 'Total Plants Tracked',
+      value: (db?.totalPlants ?? 0).toLocaleString(),
+      icon: <Sprout size={20} />,
+      iconBgColor: '#E6F5EF',
+      trend: 'up' as const,
+      changePercent: 0,
+      changePeriod: '',
+    },
+    {
+      label: 'Pending Inspections',
+      value: String(db?.pendingInspections ?? 0),
+      icon: <Truck size={20} />,
+      iconBgColor: '#FFF7E6',
+      trend: 'down' as const,
+      changePercent: 0,
+      changePeriod: '',
+    },
+    {
+      label: 'Avg Compliance Score',
+      value: `${db?.complianceRate ?? 0}%`,
+      icon: <ShieldCheck size={20} />,
+      iconBgColor: '#E6F5EF',
+      trend: 'up' as const,
+      changePercent: 0,
+      changePeriod: '',
+    },
+    {
+      label: 'Flagged Operators',
+      value: String(db?.flaggedOperators ?? 0),
+      icon: <AlertTriangle size={20} />,
+      iconBgColor: '#FFF1F0',
+      trend: 'down' as const,
+      changePercent: 0,
+      changePeriod: '',
+    },
+  ];
+
+  // Build activity items from dashboard recentActivity
+  const ACTIVITY_ITEMS = (db?.recentActivity ?? []).map((a: any) => ({
+    children: a.description ?? `[${a.type}] ${a.operatorName}`,
+  }));
+
   return (
     <NctsPageContainer
       title="National Overview"
@@ -239,7 +227,7 @@ export default function NationalDashboard() {
           lastUpdated={new Date().toISOString()}
           isLive
           onRefresh={() => {
-            // TODO: trigger SWR/react-query revalidation
+            // Queries auto-refresh via React Query
           }}
         />
       }

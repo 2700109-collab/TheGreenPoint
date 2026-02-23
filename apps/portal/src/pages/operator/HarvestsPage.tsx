@@ -4,7 +4,7 @@
  */
 
 import { useState, useMemo, useCallback, useRef } from 'react';
-import { Button, Dropdown, Table, Space, Tag, Descriptions, Checkbox, Select, Modal, message } from 'antd';
+import { Button, Dropdown, Table, Space, Tag, Descriptions, Checkbox, Select, Modal, message, Spin } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   ProTable, StepsForm, ProFormSelect, ProFormDatePicker, ProFormDigit, ProFormTextArea,
@@ -13,6 +13,7 @@ import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import dayjs from 'dayjs';
 import { Plus, Wheat, Eye, Pencil, FlaskConical, MoreVertical } from 'lucide-react';
 import { StatusBadge, TrackingId, NctsPageContainer, CsvExportButton } from '@ncts/ui';
+import { useHarvests, useCreateHarvest, usePlants } from '@ncts/api-client';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -32,56 +33,7 @@ interface FloweringPlant {
   facilityId: string; facilityName: string; plantedDate: string;
 }
 
-// ---------------------------------------------------------------------------
-// Mock Data — TODO: Replace with API hooks (e.g. useHarvests from @ncts/api-client)
-// ---------------------------------------------------------------------------
 
-const h = (
-  id: string, tid: string, cnt: number, fId: string, fName: string, date: string,
-  wet: number, dry: number | null, method: 'manual' | 'machine',
-  dryM: string | null, store: string | null, status: string, lab: string | null,
-  notes: string, pIds: string[],
-): Harvest => ({
-  id, trackingId: tid, plantCount: cnt, facilityId: fId, facilityName: fName,
-  harvestDate: date, wetWeight: wet, dryWeight: dry, harvestMethod: method,
-  dryingMethod: dryM, storageLocation: store, status, labStatus: lab, notes, plantIds: pIds,
-});
-
-const MOCK_HARVESTS: Harvest[] = [
-  h('1', 'HRV-20260115-AAA', 12, 'fac-1', 'Cape Town Facility', '2026-01-15',
-    4800, 720, 'manual', 'hang_dry', 'Vault A-3', 'completed', 'passed',
-    'Excellent trichome density', ['PLT-20251001-001', 'PLT-20251001-002']),
-  h('2', 'HRV-20260120-BBB', 8, 'fac-2', 'Johannesburg Grow House', '2026-01-20',
-    3200, 400, 'manual', 'rack_dry', 'Room B-1', 'completed', 'failed',
-    'Minor powdery mildew on 2 plants', ['PLT-20251105-003']),
-  h('3', 'HRV-20260201-CCC', 20, 'fac-1', 'Cape Town Facility', '2026-02-01',
-    9500, 1330, 'machine', 'machine', 'Vault A-7', 'completed', 'pending',
-    'Bulk harvest — Durban Poison batch', ['PLT-20251110-004', 'PLT-20251110-005']),
-  h('4', 'HRV-20260205-DDD', 5, 'fac-3', 'Durban Indoor Farm', '2026-02-05',
-    2100, null, 'manual', 'hang_dry', null, 'drying', null,
-    'Currently drying — estimate 10 days', ['PLT-20251215-006']),
-  h('5', 'HRV-20260210-EEE', 15, 'fac-2', 'Johannesburg Grow House', '2026-02-10',
-    6200, 310, 'manual', 'rack_dry', 'Cold Store 2', 'completed', 'passed',
-    'Swazi Gold — exceptional aroma', ['PLT-20251118-007', 'PLT-20251118-008']),
-  h('6', 'HRV-20260215-FFF', 3, 'fac-1', 'Cape Town Facility', '2026-02-15',
-    1400, null, 'manual', null, null, 'processing', null,
-    'Small test harvest — new strain', ['PLT-20260101-009']),
-  h('7', 'HRV-20260218-GGG', 10, 'fac-3', 'Durban Indoor Farm', '2026-02-18',
-    4100, 533, 'machine', 'machine', 'Vault D-2', 'completed', 'passed',
-    'Power Flower — high THC expected', ['PLT-20251201-010', 'PLT-20251201-011']),
-  h('8', 'HRV-20260220-HHH', 6, 'fac-2', 'Johannesburg Grow House', '2026-02-20',
-    2800, 364, 'manual', 'rack_dry', 'Room C-4', 'completed', null,
-    'Rooibaard cultivar — awaiting lab', ['PLT-20251220-012']),
-];
-
-// TODO: Replace with API call to fetch flowering plants
-const MOCK_FLOWERING_PLANTS: FloweringPlant[] = [
-  { id: 'fp-1', trackingId: 'PLT-20260101-AAA', strain: 'Purple Haze', facilityId: 'fac-1', facilityName: 'Cape Town Facility', plantedDate: '2025-11-15' },
-  { id: 'fp-2', trackingId: 'PLT-20260106-FFF', strain: 'Power Flower', facilityId: 'fac-3', facilityName: 'Durban Indoor Farm', plantedDate: '2025-10-10' },
-  { id: 'fp-3', trackingId: 'PLT-20260109-JJJ', strain: 'Durban Poison', facilityId: 'fac-1', facilityName: 'Cape Town Facility', plantedDate: '2025-12-01' },
-  { id: 'fp-4', trackingId: 'PLT-20260110-KKK', strain: 'Swazi Gold', facilityId: 'fac-2', facilityName: 'Johannesburg Grow House', plantedDate: '2025-11-20' },
-  { id: 'fp-5', trackingId: 'PLT-20260112-MMM', strain: 'Rooibaard', facilityId: 'fac-2', facilityName: 'Johannesburg Grow House', plantedDate: '2025-12-15' },
-];
 
 // ---------------------------------------------------------------------------
 // CSV columns
@@ -123,16 +75,36 @@ export default function HarvestsPage() {
   const [formValues, setFormValues] = useState<Record<string, any>>({});
   const [confirmed, setConfirmed] = useState(false);
 
+  const { data: harvestsResponse, isLoading, refetch } = useHarvests();
+  const harvests: Harvest[] = ((harvestsResponse as any)?.data ?? harvestsResponse ?? []) as Harvest[];
+
+  const { data: floweringPlantsResponse } = usePlants({ state: 'flowering' } as any);
+  const floweringPlants: FloweringPlant[] = useMemo(() => {
+    const raw: any[] = (floweringPlantsResponse as any)?.data ?? floweringPlantsResponse ?? [];
+    return raw.map((p: any) => ({
+      id: p.id,
+      trackingId: p.trackingId,
+      strain: p.strain,
+      facilityId: p.facilityId,
+      facilityName: p.facilityName ?? p.facility?.name ?? '',
+      plantedDate: p.plantedDate,
+    }));
+  }, [floweringPlantsResponse]);
+
+  const createHarvest = useCreateHarvest();
+
+  if (isLoading) return <div style={{display:'flex',justifyContent:'center',padding:'100px 0'}}><Spin size="large" /></div>;
+
   const filteredPlants = useMemo(
-    () => facilityFilter ? MOCK_FLOWERING_PLANTS.filter((p) => p.facilityId === facilityFilter) : MOCK_FLOWERING_PLANTS,
-    [facilityFilter],
+    () => facilityFilter ? floweringPlants.filter((p) => p.facilityId === facilityFilter) : floweringPlants,
+    [facilityFilter, floweringPlants],
   );
 
   const facilityOptions = useMemo(() => {
     const seen = new Map<string, string>();
-    MOCK_FLOWERING_PLANTS.forEach((p) => seen.set(p.facilityId, p.facilityName));
+    floweringPlants.forEach((p) => seen.set(p.facilityId, p.facilityName));
     return Array.from(seen.entries()).map(([value, label]) => ({ value, label }));
-  }, []);
+  }, [floweringPlants]);
 
   const resetModal = useCallback(() => {
     setSelectedPlantIds([]);
@@ -147,11 +119,19 @@ export default function HarvestsPage() {
   }, [resetModal]);
 
   const handleSubmit = useCallback(async () => {
-    // TODO: Call API to create harvest
-    message.success('Harvest recorded successfully');
-    setModalOpen(false);
-    resetModal();
-  }, [resetModal]);
+    try {
+      await createHarvest.mutateAsync({
+        plantIds: selectedPlantIds,
+        ...formValues,
+      } as any);
+      message.success('Harvest recorded successfully');
+      setModalOpen(false);
+      resetModal();
+      refetch();
+    } catch (err: any) {
+      message.error(err?.message ?? 'Failed to record harvest');
+    }
+  }, [resetModal, selectedPlantIds, formValues, createHarvest, refetch]);
 
   const getRowMenuItems = useCallback((record: Harvest): MenuProps['items'] => [
     { key: 'view', icon: <Eye size={14} />, label: 'View' },
@@ -160,8 +140,8 @@ export default function HarvestsPage() {
   ], []);
 
   const selectedPlantsData = useMemo(
-    () => MOCK_FLOWERING_PLANTS.filter((p) => selectedPlantIds.includes(p.id)),
-    [selectedPlantIds],
+    () => floweringPlants.filter((p) => selectedPlantIds.includes(p.id)),
+    [selectedPlantIds, floweringPlants],
   );
 
   const reviewYield = useMemo(
@@ -289,10 +269,10 @@ export default function HarvestsPage() {
   return (
     <NctsPageContainer
       title="Harvests"
-      subTitle={`${MOCK_HARVESTS.length} total harvests`}
+      subTitle={`${harvests.length} total harvests`}
       extra={
         <Space>
-          <CsvExportButton data={MOCK_HARVESTS} columns={CSV_COLUMNS} filename="harvests-export" />
+          <CsvExportButton data={harvests} columns={CSV_COLUMNS} filename="harvests-export" />
           <Button type="primary" onClick={handleOpenModal} icon={<Plus size={16} />}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <Wheat size={16} /> Record Harvest
@@ -304,7 +284,7 @@ export default function HarvestsPage() {
       <ProTable<Harvest>
         columns={columns}
         actionRef={actionRef}
-        dataSource={MOCK_HARVESTS}
+        dataSource={harvests}
         rowKey="id"
         search={{ filterType: 'light' }}
         pagination={{ pageSize: 20, showTotal: (total) => `${total} harvests` }}

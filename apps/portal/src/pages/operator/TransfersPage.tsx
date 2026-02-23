@@ -5,7 +5,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import { Button, Tabs, Tag, Modal, Space, Descriptions, Checkbox, Table, QRCode, message } from 'antd';
+import { Button, Tabs, Tag, Modal, Space, Descriptions, Checkbox, Table, QRCode, message, Spin } from 'antd';
 import type { TabsProps } from 'antd';
 import { ProTable, StepsForm, ProFormText, ProFormSelect, ProFormDatePicker, ProFormTextArea } from '@ant-design/pro-components';
 import type { ProColumns } from '@ant-design/pro-components';
@@ -19,6 +19,7 @@ import {
   CsvExportButton,
 } from '@ncts/ui';
 import type { TransferStatus } from '@ncts/ui';
+import { useTransfers, useInitiateTransfer, useFacilities, usePlants } from '@ncts/api-client';
 
 dayjs.extend(relativeTime);
 
@@ -51,99 +52,7 @@ interface ManifestPlant {
   stage: string;
 }
 
-// ---------------------------------------------------------------------------
-// Mock Data — TODO: Replace with API hooks (e.g. useTransfers from @ncts/api-client)
-// ---------------------------------------------------------------------------
 
-const MOCK_TRANSFERS: Transfer[] = [
-  {
-    id: '1', trackingId: 'TRF-20260218-A1B2', direction: 'outgoing',
-    fromFacility: 'Cape Town Indoor', toFacility: 'Johannesburg Greenhouse',
-    itemCount: 12, weightGrams: null, status: 'initiated',
-    createdAt: '2026-02-18T09:30:00Z', estimatedArrival: '2026-02-22T14:00:00Z',
-    vehicleReg: 'CA 123-456', driverName: 'John Dlamini',
-  },
-  {
-    id: '2', trackingId: 'TRF-20260217-C3D4', direction: 'incoming',
-    fromFacility: 'Durban Outdoor', toFacility: 'Cape Town Indoor',
-    itemCount: 8, weightGrams: null, status: 'in_transit',
-    createdAt: '2026-02-17T11:00:00Z', estimatedArrival: '2026-02-21T16:00:00Z',
-    vehicleReg: 'ND 789-012', driverName: 'Sipho Nkosi',
-  },
-  {
-    id: '3', trackingId: 'TRF-20260215-E5F6', direction: 'outgoing',
-    fromFacility: 'Cape Town Indoor', toFacility: 'Stellenbosch Processing',
-    itemCount: 5, weightGrams: 2400, status: 'received',
-    createdAt: '2026-02-15T08:15:00Z', estimatedArrival: '2026-02-16T10:00:00Z',
-    vehicleReg: 'CA 456-789', driverName: 'Pieter van der Merwe',
-  },
-  {
-    id: '4', trackingId: 'TRF-20260214-G7H8', direction: 'incoming',
-    fromFacility: 'Johannesburg Greenhouse', toFacility: 'Cape Town Indoor',
-    itemCount: 20, weightGrams: null, status: 'verified',
-    createdAt: '2026-02-14T14:45:00Z', estimatedArrival: '2026-02-17T09:00:00Z',
-    vehicleReg: 'GP 321-654', driverName: 'Thabo Mokoena',
-  },
-  {
-    id: '5', trackingId: 'TRF-20260213-I9J0', direction: 'outgoing',
-    fromFacility: 'Cape Town Indoor', toFacility: 'Durban Outdoor',
-    itemCount: 3, weightGrams: 1100, status: 'dispatched',
-    createdAt: '2026-02-13T10:00:00Z', estimatedArrival: '2026-02-20T12:00:00Z',
-    vehicleReg: 'CA 654-321', driverName: 'André Botha',
-  },
-  {
-    id: '6', trackingId: 'TRF-20260210-K1L2', direction: 'incoming',
-    fromFacility: 'Stellenbosch Processing', toFacility: 'Cape Town Indoor',
-    itemCount: 15, weightGrams: null, status: 'rejected',
-    createdAt: '2026-02-10T13:20:00Z', estimatedArrival: '2026-02-11T15:00:00Z',
-    vehicleReg: 'CA 987-654', driverName: 'Lindiwe Zulu',
-  },
-  {
-    id: '7', trackingId: 'TRF-20260209-M3N4', direction: 'outgoing',
-    fromFacility: 'Cape Town Indoor', toFacility: 'Johannesburg Greenhouse',
-    itemCount: 7, weightGrams: null, status: 'cancelled',
-    createdAt: '2026-02-09T07:50:00Z', estimatedArrival: '2026-02-12T11:00:00Z',
-    vehicleReg: null, driverName: null,
-  },
-  {
-    id: '8', trackingId: 'TRF-20260221-O5P6', direction: 'outgoing',
-    fromFacility: 'Cape Town Indoor', toFacility: 'Durban Outdoor',
-    itemCount: 10, weightGrams: null, status: 'draft',
-    createdAt: '2026-02-21T06:00:00Z', estimatedArrival: '2026-02-25T14:00:00Z',
-    vehicleReg: null, driverName: null,
-  },
-  {
-    id: '9', trackingId: 'TRF-20260220-Q7R8', direction: 'incoming',
-    fromFacility: 'Durban Outdoor', toFacility: 'Cape Town Indoor',
-    itemCount: 6, weightGrams: null, status: 'initiated',
-    createdAt: '2026-02-20T15:30:00Z', estimatedArrival: '2026-02-24T10:00:00Z',
-    vehicleReg: 'ND 111-222', driverName: 'Bongani Mthembu',
-  },
-  {
-    id: '10', trackingId: 'TRF-20260219-S9T0', direction: 'outgoing',
-    fromFacility: 'Cape Town Indoor', toFacility: 'Stellenbosch Processing',
-    itemCount: 4, weightGrams: 1800, status: 'in_transit',
-    createdAt: '2026-02-19T12:10:00Z', estimatedArrival: '2026-02-21T08:00:00Z',
-    vehicleReg: 'CA 333-444', driverName: 'Kobus Pretorius',
-  },
-];
-
-// TODO: Replace with API call to fetch plants from source facility
-const MOCK_SOURCE_PLANTS: ManifestPlant[] = [
-  { id: 'p1', trackingId: 'PLT-20260101-AA11', strain: 'Durban Poison', weightGrams: 320, stage: 'Flowering' },
-  { id: 'p2', trackingId: 'PLT-20260105-BB22', strain: 'Swazi Gold', weightGrams: 280, stage: 'Vegetative' },
-  { id: 'p3', trackingId: 'PLT-20260110-CC33', strain: 'Malawi Gold', weightGrams: 410, stage: 'Harvested' },
-  { id: 'p4', trackingId: 'PLT-20260112-DD44', strain: 'Rooibaard', weightGrams: 195, stage: 'Flowering' },
-  { id: 'p5', trackingId: 'PLT-20260115-EE55', strain: 'Power Plant', weightGrams: 350, stage: 'Vegetative' },
-];
-
-// TODO: Replace with API call to fetch facilities
-const MOCK_FACILITIES = [
-  { value: 'fac-001', label: 'Cape Town Indoor — Western Cape' },
-  { value: 'fac-002', label: 'Johannesburg Greenhouse — Gauteng' },
-  { value: 'fac-003', label: 'Durban Outdoor — KwaZulu-Natal' },
-  { value: 'fac-004', label: 'Stellenbosch Processing — Western Cape' },
-];
 
 const SECURITY_OPTIONS = [
   { label: 'GPS tracking', value: 'gps_tracking' },
@@ -181,17 +90,42 @@ export default function TransfersPage() {
   const [authorized, setAuthorized] = useState(false);
   const [wizardFormData, setWizardFormData] = useState<Record<string, any>>({});
 
+  const { data: transfersResponse, isLoading, refetch } = useTransfers();
+  const transfers: Transfer[] = ((transfersResponse as any)?.data ?? transfersResponse ?? []) as Transfer[];
+
+  const { data: facilitiesResponse } = useFacilities();
+  const facilityOptions = useMemo(() => {
+    const raw: any[] = (facilitiesResponse as any)?.data ?? facilitiesResponse ?? [];
+    return raw.map((f: any) => ({ value: f.id, label: `${f.name} — ${f.province ?? ''}` }));
+  }, [facilitiesResponse]);
+
+  const { data: plantsResponse } = usePlants();
+  const sourcePlants: ManifestPlant[] = useMemo(() => {
+    const raw: any[] = (plantsResponse as any)?.data ?? plantsResponse ?? [];
+    return raw.map((p: any) => ({
+      id: p.id,
+      trackingId: p.trackingId,
+      strain: p.strain,
+      weightGrams: p.weightGrams ?? 0,
+      stage: p.currentStage ?? p.stage ?? '',
+    }));
+  }, [plantsResponse]);
+
+  const initiateTransfer = useInitiateTransfer();
+
+  if (isLoading) return <div style={{display:'flex',justifyContent:'center',padding:'100px 0'}}><Spin size="large" /></div>;
+
   // ---------------------------------------------------------------------------
   // Derived counts — TODO: derive from API response meta
   // ---------------------------------------------------------------------------
 
-  const outCount = useMemo(() => MOCK_TRANSFERS.filter((t) => t.direction === 'outgoing').length, []);
-  const inCount = useMemo(() => MOCK_TRANSFERS.filter((t) => t.direction === 'incoming').length, []);
+  const outCount = useMemo(() => transfers.filter((t) => t.direction === 'outgoing').length, [transfers]);
+  const inCount = useMemo(() => transfers.filter((t) => t.direction === 'incoming').length, [transfers]);
   const pendingCount = useMemo(
-    () => MOCK_TRANSFERS.filter((t) => PENDING_STATUSES.includes(t.status)).length,
-    [],
+    () => transfers.filter((t) => PENDING_STATUSES.includes(t.status)).length,
+    [transfers],
   );
-  const total = MOCK_TRANSFERS.length;
+  const total = transfers.length;
 
   // ---------------------------------------------------------------------------
   // Filtered data
@@ -200,15 +134,15 @@ export default function TransfersPage() {
   const filteredData = useMemo(() => {
     switch (activeTab) {
       case 'outgoing':
-        return MOCK_TRANSFERS.filter((t) => t.direction === 'outgoing');
+        return transfers.filter((t) => t.direction === 'outgoing');
       case 'incoming':
-        return MOCK_TRANSFERS.filter((t) => t.direction === 'incoming');
+        return transfers.filter((t) => t.direction === 'incoming');
       case 'pending':
-        return MOCK_TRANSFERS.filter((t) => PENDING_STATUSES.includes(t.status));
+        return transfers.filter((t) => PENDING_STATUSES.includes(t.status));
       default:
-        return MOCK_TRANSFERS;
+        return transfers;
     }
-  }, [activeTab]);
+  }, [activeTab, transfers]);
 
   // ---------------------------------------------------------------------------
   // Wizard handlers
@@ -225,8 +159,8 @@ export default function TransfersPage() {
   const closeWizard = useCallback(() => setWizardOpen(false), []);
 
   const selectedPlants = useMemo(
-    () => MOCK_SOURCE_PLANTS.filter((p) => selectedPlantKeys.includes(p.id)),
-    [selectedPlantKeys],
+    () => sourcePlants.filter((p) => selectedPlantKeys.includes(p.id)),
+    [selectedPlantKeys, sourcePlants],
   );
 
   // ---------------------------------------------------------------------------
@@ -409,7 +343,7 @@ export default function TransfersPage() {
       extra={
         <Space>
           <CsvExportButton
-            data={MOCK_TRANSFERS}
+            data={transfers}
             columns={CSV_COLUMNS}
             filename={`transfers-${dayjs().format('YYYY-MM-DD')}`}
             label="Export CSV"
@@ -443,7 +377,7 @@ export default function TransfersPage() {
         dataSource={filteredData}
         rowKey="id"
         search={{ filterType: 'light' }}
-        options={{ density: true, fullScreen: true, reload: () => message.info('Reload — TODO') }}
+        options={{ density: true, fullScreen: true, reload: () => refetch() }}
         pagination={{ pageSize: 10, showSizeChanger: true }}
         dateFormatter="string"
         headerTitle={false}
@@ -468,11 +402,14 @@ export default function TransfersPage() {
               manifest: selectedPlants.map((p) => p.trackingId),
               securityMeasures,
             };
-            // TODO: Replace with real API call
-            await new Promise((r) => setTimeout(r, 600));
-            console.log('Transfer payload:', payload);
-            message.success('Transfer initiated successfully!');
-            closeWizard();
+            try {
+              await initiateTransfer.mutateAsync(payload as any);
+              message.success('Transfer initiated successfully!');
+              closeWizard();
+              refetch();
+            } catch (err: any) {
+              message.error(err?.message ?? 'Failed to initiate transfer');
+            }
           }}
           stepsProps={{ style: { marginBottom: 24 } }}
           formProps={{ layout: 'vertical' }}
@@ -490,7 +427,7 @@ export default function TransfersPage() {
               name="destinationFacility"
               label="Destination Facility"
               rules={[{ required: true, message: 'Select a destination facility' }]}
-              options={MOCK_FACILITIES}
+              options={facilityOptions}
               placeholder="Select destination facility"
               showSearch
             />
@@ -523,7 +460,7 @@ export default function TransfersPage() {
             </div>
             <Table
               columns={manifestColumns}
-              dataSource={MOCK_SOURCE_PLANTS}
+              dataSource={sourcePlants}
               rowKey="id"
               size="small"
               pagination={false}
@@ -614,7 +551,7 @@ export default function TransfersPage() {
               style={{ marginBottom: 16 }}
             >
               <Descriptions.Item label="Destination">
-                {MOCK_FACILITIES.find((f) => f.value === wizardFormData.destinationFacility)?.label ?? '—'}
+                {facilityOptions.find((f) => f.value === wizardFormData.destinationFacility)?.label ?? '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Estimated Arrival">
                 {wizardFormData.estimatedArrival

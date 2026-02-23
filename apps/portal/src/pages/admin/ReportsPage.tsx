@@ -4,12 +4,13 @@
  */
 
 import { useState } from 'react';
-import { Card, Tabs, DatePicker, Select, Table, Button, Row, Col, Space, Statistic } from 'antd';
+import { Card, Tabs, DatePicker, Select, Table, Button, Row, Col, Space, Spin, Statistic } from 'antd';
 import { FileText, Download, Wrench } from 'lucide-react';
 import { NctsPageContainer } from '@ncts/ui';
+import { useSalesAggregate } from '@ncts/api-client';
 
 // ---------------------------------------------------------------------------
-// Mock Data — TODO: Replace with API hooks
+// Mock Data DELETED WHERE POSSIBLE — province/INCB data kept as specialized aggregations
 // ---------------------------------------------------------------------------
 
 const PROVINCE_DATA = [
@@ -55,6 +56,13 @@ const incbColumns = [
 
 export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState('monthly');
+  const { data: salesAggResponse, isLoading } = useSalesAggregate('monthly');
+
+  if (isLoading) return <div style={{display:'flex',justifyContent:'center',padding:'100px 0'}}><Spin size="large" /></div>;
+
+  const salesAgg = salesAggResponse?.data ?? salesAggResponse ?? [];
+  const totalSalesCount = (salesAgg as any[]).reduce((sum: number, s: any) => sum + (s.count ?? 0), 0);
+  const totalSalesValue = (salesAgg as any[]).reduce((sum: number, s: any) => sum + (s.total ?? 0), 0);
 
   // -- Monthly Report Tab ---------------------------------------------------
   const monthlyTab = (

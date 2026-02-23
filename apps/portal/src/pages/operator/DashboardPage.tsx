@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Row, Col, Card, Timeline, List, Button, Badge, Typography, FloatButton, Grid } from 'antd';
+import { Row, Col, Card, Timeline, List, Button, Badge, Typography, FloatButton, Grid, Spin } from 'antd';
+import { useOperatorDashboard, useActivityFeed, usePlants } from '@ncts/api-client';
+import { useAuth } from '../../contexts/AuthContext';
 import { Pie, Line } from '@ant-design/charts';
 import {
   Sprout,
@@ -28,8 +30,7 @@ const { useBreakpoint } = Grid;
 const { Text } = Typography;
 
 // ---------------------------------------------------------------------------
-// Mock Data — TODO: Replace with real API hooks
-// (useOperatorDashboard, usePlants, useTransfers, useSales, useActivityFeed)
+// Types
 // ---------------------------------------------------------------------------
 
 interface ActivityItem {
@@ -55,35 +56,7 @@ interface LifecycleStage {
   percent: number;
 }
 
-const MOCK_KPI = {
-  activePlants: { value: '1,247', trend: 'up' as const, changePercent: 12.3, sparkline: [40, 44, 38, 52, 48, 56, 61] },
-  pendingTransfers: { value: '23', trend: 'up' as const, changePercent: 8.1, sparkline: [5, 3, 7, 4, 6, 8, 5] },
-  monthlySales: { value: 'R 842,500', trend: 'up' as const, changePercent: 15.7, sparkline: [120, 135, 110, 150, 142, 168, 180] },
-  complianceScore: { value: '94%', trend: 'up' as const, changePercent: 2.1, sparkline: [88, 90, 89, 91, 92, 93, 94] },
-};
 
-const MOCK_LIFECYCLE: LifecycleStage[] = [
-  { stage: 'Seedling', count: 312, color: '#95DE64', percent: 25 },
-  { stage: 'Vegetative', count: 486, color: '#73D13D', percent: 39 },
-  { stage: 'Flowering', count: 274, color: '#FF9C6E', percent: 22 },
-  { stage: 'Harvested', count: 137, color: '#69B1FF', percent: 11 },
-  { stage: 'Destroyed', count: 38, color: '#FF4D4F', percent: 3 },
-];
-
-const MOCK_ACTIVITY: ActivityItem[] = [
-  { id: '1', type: 'plant_registered', description: 'Registered 24 new seedlings at GreenFields Farm', timestamp: '2026-02-21T09:15:00Z', entityId: 'PLT-20260221-A7F3' },
-  { id: '2', type: 'transfer_initiated', description: 'Transfer of 50 plants to Cape Processing', timestamp: '2026-02-21T08:42:00Z', entityId: 'TRF-20260221-B2C1' },
-  { id: '3', type: 'harvest_recorded', description: 'Harvested 120 plants — 48.6 kg dry weight', timestamp: '2026-02-20T16:30:00Z', entityId: 'HRV-20260220-D4E5' },
-  { id: '4', type: 'lab_result', description: 'Lab results received for batch BT-2026-0142', timestamp: '2026-02-20T14:10:00Z', entityId: 'LAB-20260220-F6G7' },
-  { id: '5', type: 'sale_completed', description: 'Sale of 12 kg to licensed retailer', timestamp: '2026-02-20T11:05:00Z', entityId: 'SAL-20260220-H8J9' },
-  { id: '6', type: 'plant_registered', description: 'Registered 18 clones at Durban Nursery', timestamp: '2026-02-19T15:20:00Z', entityId: 'PLT-20260219-K1L2' },
-];
-
-const MOCK_ALERTS: AlertItem[] = [
-  { id: '1', severity: 'error', message: 'Compliance violation: PLT-20260218-X3Y4 missing inspection', timestamp: '2 hours ago', route: '/operator/plants' },
-  { id: '2', severity: 'warning', message: 'Cultivation permit expiring in 28 days', timestamp: 'Yesterday', route: '/operator/dashboard' },
-  { id: '3', severity: 'info', message: 'Incoming transfer TRF-20260221-M5N6 pending acceptance', timestamp: '3 hours ago', route: '/operator/transfers' },
-];
 
 // Mock 30-day transfer volume data — outgoing + incoming
 const MOCK_TRANSFER_OUTGOING = [2, 3, 1, 4, 2, 3, 5, 1, 3, 6, 4, 2, 4, 3, 5, 6, 3, 2, 4, 2, 3, 5, 3, 6, 2, 4, 7, 3, 4, 5];
@@ -138,15 +111,47 @@ function relativeTime(iso: string): string {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
   const screens = useBreakpoint();
   const isMobile = !screens.md;
+  const { user } = useAuth();
 
-  // Simulate initial data fetch — TODO: replace with real query loading states
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(timer);
-  }, []);
+  const { data: dashboardData, isLoading: isDashboardLoading, refetch: refetchDashboard } = useOperatorDashboard(user?.tenantId ?? '');
+  const { data: activityData, isLoading: isActivityLoading } = useActivityFeed(user?.tenantId ?? '');
+  const { data: plantsResponse, isLoading: isPlantsLoading } = usePlants();
+
+  const dashboard = dashboardData as any;
+  const activity: ActivityItem[] = ((activityData as any)?.data ?? activityData ?? []) as ActivityItem[];
+  const allPlants: any[] = ((plantsResponse as any)?.data ?? plantsResponse ?? []);
+
+  // Derive KPI values from dashboard API response
+  const kpi = useMemo(() => ({
+    activePlants: { value: dashboard?.activePlants != null ? dashboard.activePlants.toLocaleString() : '—' },
+    pendingTransfers: { value: dashboard?.pendingTransfers != null ? String(dashboard.pendingTransfers) : '—' },
+    monthlySales: { value: dashboard?.monthlySales != null ? `R ${dashboard.monthlySales.toLocaleString()}` : '—' },
+    complianceScore: { value: dashboard?.complianceScore != null ? `${dashboard.complianceScore}%` : '—' },
+  }), [dashboard]);
+
+  // Derive lifecycle counts from plants data
+  const lifecycle: LifecycleStage[] = useMemo(() => {
+    const stageCounts: Record<string, number> = { Seedling: 0, Vegetative: 0, Flowering: 0, Harvested: 0, Destroyed: 0 };
+    const stageColors: Record<string, string> = { Seedling: '#95DE64', Vegetative: '#73D13D', Flowering: '#FF9C6E', Harvested: '#69B1FF', Destroyed: '#FF4D4F' };
+    allPlants.forEach((p: any) => {
+      const stage = (p.currentStage ?? '').charAt(0).toUpperCase() + (p.currentStage ?? '').slice(1);
+      if (stage in stageCounts) stageCounts[stage]++;
+    });
+    const total = Object.values(stageCounts).reduce((s, c) => s + c, 0) || 1;
+    return Object.entries(stageCounts).map(([stage, count]) => ({
+      stage,
+      count,
+      color: stageColors[stage] ?? '#8c8c8c',
+      percent: Math.round((count / total) * 100),
+    }));
+  }, [allPlants]);
+
+  // Empty alerts — derive from dashboard when endpoint is available
+  const alerts: AlertItem[] = [];
+
+  const loading = isDashboardLoading || isActivityLoading || isPlantsLoading;
 
   if (loading) {
     return <SkeletonPage variant="dashboard" cards={4} />;
@@ -160,7 +165,7 @@ export default function DashboardPage() {
         <DataFreshness
           lastUpdated={new Date().toISOString()}
           onRefresh={() => {
-            /* TODO: invalidate react-query cache */
+            refetchDashboard();
           }}
         />
       }
@@ -170,52 +175,40 @@ export default function DashboardPage() {
         <Col xl={6} md={12} sm={24} xs={24}>
           <StatCard
             label="Active Plants"
-            value={MOCK_KPI.activePlants.value}
+            value={kpi.activePlants.value}
             icon={<Sprout size={20} />}
             iconBgColor="#E6F5EF"
-            trend={MOCK_KPI.activePlants.trend}
-            changePercent={MOCK_KPI.activePlants.changePercent}
             changePeriod="vs last 30 days"
-            sparkline={MOCK_KPI.activePlants.sparkline}
             onClick={() => navigate('/operator/plants')}
           />
         </Col>
         <Col xl={6} md={12} sm={24} xs={24}>
           <StatCard
             label="Pending Transfers"
-            value={MOCK_KPI.pendingTransfers.value}
+            value={kpi.pendingTransfers.value}
             icon={<Truck size={20} />}
             iconBgColor="#FFF7E6"
-            trend={MOCK_KPI.pendingTransfers.trend}
-            changePercent={MOCK_KPI.pendingTransfers.changePercent}
             changePeriod="vs last 30 days"
-            sparkline={MOCK_KPI.pendingTransfers.sparkline}
             onClick={() => navigate('/operator/transfers')}
           />
         </Col>
         <Col xl={6} md={12} sm={24} xs={24}>
           <StatCard
             label="Monthly Sales"
-            value={MOCK_KPI.monthlySales.value}
+            value={kpi.monthlySales.value}
             icon={<ShoppingCart size={20} />}
             iconBgColor="#E6F7FF"
-            trend={MOCK_KPI.monthlySales.trend}
-            changePercent={MOCK_KPI.monthlySales.changePercent}
             changePeriod="vs last month"
-            sparkline={MOCK_KPI.monthlySales.sparkline}
             onClick={() => navigate('/operator/sales')}
           />
         </Col>
         <Col xl={6} md={12} sm={24} xs={24}>
           <StatCard
             label="Compliance Score"
-            value={MOCK_KPI.complianceScore.value}
+            value={kpi.complianceScore.value}
             icon={<ShieldCheck size={20} />}
-            iconBgColor={parseInt(MOCK_KPI.complianceScore.value) >= 90 ? '#F6FFED' : parseInt(MOCK_KPI.complianceScore.value) >= 70 ? '#FFFBE6' : '#FFF1F0'}
-            trend={MOCK_KPI.complianceScore.trend}
-            changePercent={MOCK_KPI.complianceScore.changePercent}
+            iconBgColor={parseInt(kpi.complianceScore.value) >= 90 ? '#F6FFED' : parseInt(kpi.complianceScore.value) >= 70 ? '#FFFBE6' : '#FFF1F0'}
             changePeriod="vs last assessment"
-            sparkline={MOCK_KPI.complianceScore.sparkline}
           />
         </Col>
       </Row>
@@ -226,12 +219,12 @@ export default function DashboardPage() {
           <Card title="Plant Lifecycle Distribution" size="small">
             <Pie
               theme="ncts"
-              data={MOCK_LIFECYCLE.map((s) => ({ stage: s.stage, count: s.count }))}
+              data={lifecycle.map((s) => ({ stage: s.stage, count: s.count }))}
               angleField="count"
               colorField="stage"
               innerRadius={0.55}
               height={220}
-              color={MOCK_LIFECYCLE.map((s) => s.color)}
+              color={lifecycle.map((s) => s.color)}
               label={{ text: 'count', style: { fontWeight: 600, fontSize: 12 } }}
               tooltip={{ title: 'stage', items: [{ field: 'count', name: 'Plants' }] }}
               legend={{ position: 'right' }}
@@ -270,8 +263,8 @@ export default function DashboardPage() {
             extra={<Button type="link" size="small" onClick={() => navigate('/operator/dashboard')}>View all</Button>}
           >
             <Timeline
-              items={MOCK_ACTIVITY.map((item) => {
-                const meta = ACTIVITY_ICON_MAP[item.type];
+              items={activity.map((item) => {
+                const meta = ACTIVITY_ICON_MAP[item.type as ActivityItem['type']] ?? { icon: <Clock size={14} />, color: '#8c8c8c' };
                 return {
                   dot: (
                     <div
@@ -313,14 +306,14 @@ export default function DashboardPage() {
               <span>
                 <AlertTriangle size={14} style={{ marginRight: 6, verticalAlign: 'middle', color: '#FAAD14' }} />
                 Active Alerts
-                <Badge count={MOCK_ALERTS.length} style={{ marginLeft: 8 }} />
+                <Badge count={alerts.length} style={{ marginLeft: 8 }} />
               </span>
             }
             size="small"
             extra={<Button type="link" size="small">View all</Button>}
           >
             <List
-              dataSource={MOCK_ALERTS}
+              dataSource={alerts}
               renderItem={(alert) => (
                 <List.Item
                   style={{ cursor: 'pointer', padding: '10px 0' }}

@@ -12,6 +12,7 @@ import {
   Select,
   Typography,
   message,
+  Spin,
 } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Building2, MapPin, Eye, Pencil, Navigation } from 'lucide-react';
@@ -23,6 +24,7 @@ import {
   SkeletonPage,
 } from '@ncts/ui';
 import type { FacilityStatus } from '@ncts/ui';
+import { useFacilities, useCreateFacility, useUpdateFacility } from '@ncts/api-client';
 
 const { Text } = Typography;
 
@@ -78,63 +80,19 @@ const SA_PROVINCES = [
   'Western Cape',
 ];
 
-// ---------------------------------------------------------------------------
-// Mock data — TODO: replace with useFacilities() API hook
-// ---------------------------------------------------------------------------
 
-const MOCK_FACILITIES: Facility[] = [
-  {
-    id: 'fac-001',
-    name: 'Stellenbosch Cultivation Centre',
-    type: 'cultivation',
-    status: 'active',
-    province: 'Western Cape',
-    city: 'Stellenbosch',
-    streetAddress: '24 Dorp Street',
-    gpsLat: -33.9346,
-    gpsLng: 18.8602,
-    activePlants: 342,
-    areaSqm: 2400,
-    licenseNumber: 'FAC-20250115-STL',
-    description: 'Primary indoor cultivation facility with 6 grow rooms.',
-  },
-  {
-    id: 'fac-002',
-    name: 'Midrand Processing Lab',
-    type: 'processing',
-    status: 'active',
-    province: 'Gauteng',
-    city: 'Midrand',
-    streetAddress: '88 Lever Road, Halfway House',
-    gpsLat: -25.9886,
-    gpsLng: 28.1269,
-    activePlants: 0,
-    areaSqm: 850,
-    licenseNumber: 'FAC-20250220-MID',
-  },
-  {
-    id: 'fac-003',
-    name: 'Durban Distribution Hub',
-    type: 'distribution',
-    status: 'inactive',
-    province: 'KwaZulu-Natal',
-    city: 'Durban',
-    streetAddress: '12 Point Waterfront Drive',
-    gpsLat: -29.8587,
-    gpsLng: 31.0218,
-    activePlants: 0,
-    areaSqm: 1200,
-  },
-];
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export default function FacilitiesPage() {
-  // TODO: replace with API hook — const { data, isLoading } = useFacilities();
-  const [isLoading] = useState(false);
-  const facilities = MOCK_FACILITIES;
+  const { data: facilitiesResponse, isLoading, refetch } = useFacilities();
+  const facilities: Facility[] = ((facilitiesResponse as any)?.data ?? facilitiesResponse ?? []) as Facility[];
+
+  const createFacility = useCreateFacility();
+  const [editId, setEditId] = useState<string | null>(null);
+  const updateFacility = useUpdateFacility(editId ?? '');
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingFacility, setEditingFacility] = useState<Facility | null>(null);
@@ -149,6 +107,7 @@ export default function FacilitiesPage() {
 
   const openEdit = (facility: Facility) => {
     setEditingFacility(facility);
+    setEditId(facility.id);
     form.setFieldsValue({
       name: facility.name,
       type: facility.type,
@@ -167,13 +126,19 @@ export default function FacilitiesPage() {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      // TODO: API call — editingFacility ? updateFacility(editingFacility.id, values) : createFacility(values)
-      console.log(editingFacility ? 'Update facility' : 'Create facility', values);
-      message.success(editingFacility ? 'Facility updated' : 'Facility added');
+      if (editingFacility) {
+        await updateFacility.mutateAsync(values);
+        message.success('Facility updated');
+      } else {
+        await createFacility.mutateAsync(values);
+        message.success('Facility added');
+      }
       setDrawerOpen(false);
       form.resetFields();
-    } catch {
-      // validation errors shown inline
+      refetch();
+    } catch (err: any) {
+      if (err?.errorFields) return; // validation errors shown inline
+      message.error(err?.message ?? 'Operation failed');
     }
   };
 

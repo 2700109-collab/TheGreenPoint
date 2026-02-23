@@ -15,6 +15,7 @@ import {
   Row,
   Segmented,
   Space,
+  Spin,
   Tag,
   Typography,
 } from 'antd';
@@ -31,6 +32,7 @@ import {
   CsvExportButton,
 } from '@ncts/ui';
 import { Column as ColumnChart, Pie, Line as LineChart } from '@ant-design/charts';
+import { useInspections } from '@ncts/api-client';
 
 dayjs.extend(relativeTime);
 
@@ -74,31 +76,9 @@ const OUTCOME_COLOR: Record<InspectionOutcome, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// Mock Data — TODO: Replace with API hooks (GET /inspections)
+// Mock Data DELETED — now using useInspections() hook
+// Static analytics data kept (no dedicated analytics endpoint yet)
 // ---------------------------------------------------------------------------
-
-const now = dayjs();
-const ym = now.format('YYYY-MM');
-
-const MOCK_INSPECTIONS: Inspection[] = [
-  { id: 'INS-001', facilityId: 'FAC-01', facilityName: 'GreenLeaf Cultivation', type: 'Routine', scheduledDate: `${ym}-03`, inspector: 'N. Mthembu', status: 'Completed', outcome: 'Pass' },
-  { id: 'INS-002', facilityId: 'FAC-02', facilityName: 'Cape Cannabis Processing', type: 'Complaint', scheduledDate: `${ym}-07`, inspector: 'T. Nkosi', status: 'Completed', outcome: 'Fail' },
-  { id: 'INS-003', facilityId: 'FAC-03', facilityName: 'Durban Botanicals', type: 'Follow-up', scheduledDate: `${ym}-11`, inspector: 'B. Dlamini', status: 'In Progress', outcome: 'Pending' },
-  { id: 'INS-004', facilityId: 'FAC-04', facilityName: 'Highveld Growers', type: 'Routine', scheduledDate: `${ym}-14`, inspector: 'S. Mokoena', status: 'Scheduled', outcome: 'Pending' },
-  { id: 'INS-005', facilityId: 'FAC-05', facilityName: 'Eastern Roots Trading', type: 'Random', scheduledDate: `${ym}-18`, inspector: 'N. Mthembu', status: 'Scheduled', outcome: 'Pending' },
-  { id: 'INS-006', facilityId: 'FAC-01', facilityName: 'GreenLeaf Cultivation', type: 'Follow-up', scheduledDate: `${ym}-21`, inspector: 'T. Nkosi', status: 'Overdue', outcome: 'Pending' },
-  { id: 'INS-007', facilityId: 'FAC-06', facilityName: 'Free State Extracts', type: 'Routine', scheduledDate: `${ym}-24`, inspector: 'B. Dlamini', status: 'Scheduled', outcome: 'Pending' },
-  { id: 'INS-008', facilityId: 'FAC-07', facilityName: 'Limpopo Leaf Industries', type: 'Complaint', scheduledDate: `${ym}-28`, inspector: 'S. Mokoena', status: 'Completed', outcome: 'Conditional' },
-];
-
-// ---------------------------------------------------------------------------
-// Upcoming inspections (next 7 days) — TODO: compute from API response
-// ---------------------------------------------------------------------------
-
-const UPCOMING: Inspection[] = MOCK_INSPECTIONS.filter((i) => {
-  const d = dayjs(i.scheduledDate);
-  return d.isAfter(now) && d.diff(now, 'day') <= 7;
-});
 
 // ---------------------------------------------------------------------------
 // CSV columns
@@ -174,11 +154,32 @@ export default function InspectionsPage() {
   const navigate = useNavigate();
   const actionRef = useRef<ActionType>(undefined);
   const [view, setView] = useState<'Calendar' | 'List' | 'Analytics'>('Calendar');
+  const { data: inspectionsResponse, isLoading } = useInspections();
+
+  const now = dayjs();
+
+  const inspections: Inspection[] = (inspectionsResponse?.data ?? inspectionsResponse ?? []).map((i: any) => ({
+    id: i.id,
+    facilityId: i.facilityId ?? '',
+    facilityName: i.facilityName ?? i.facility?.name ?? '',
+    type: (i.type ?? 'Routine') as InspectionType,
+    scheduledDate: i.scheduledDate ?? '',
+    inspector: i.inspector ?? i.inspectorName ?? '',
+    status: (i.status ?? 'Scheduled') as InspectionStatus,
+    outcome: (i.outcome ?? 'Pending') as InspectionOutcome,
+  }));
+
+  const upcoming: Inspection[] = inspections.filter((i) => {
+    const d = dayjs(i.scheduledDate);
+    return d.isAfter(now) && d.diff(now, 'day') <= 7;
+  });
+
+  if (isLoading) return <div style={{display:'flex',justifyContent:'center',padding:'100px 0'}}><Spin size="large" /></div>;
 
   // ── Calendar cell renderer ──────────────────────────────────────
   const dateCellRender = (date: Dayjs) => {
     const dateStr = date.format('YYYY-MM-DD');
-    const hits = MOCK_INSPECTIONS.filter((i) => i.scheduledDate === dateStr);
+    const hits = inspections.filter((i) => i.scheduledDate === dateStr);
     if (hits.length === 0) return null;
     return (
       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 2 }}>
@@ -270,7 +271,7 @@ export default function InspectionsPage() {
       extra={
         <Space size="middle">
           <DataFreshness {...({ timestamp: dayjs().subtract(4, 'minute').toISOString() } as any)} />
-          <CsvExportButton {...({ data: MOCK_INSPECTIONS, columns: CSV_COLUMNS, filename: 'inspections' } as any)} />
+          <CsvExportButton {...({ data: inspections, columns: CSV_COLUMNS, filename: 'inspections' } as any)} />
           <Segmented
             options={['Calendar', 'List', 'Analytics']}
             value={view}
@@ -303,7 +304,7 @@ export default function InspectionsPage() {
         <ProTable<Inspection>
           actionRef={actionRef}
           columns={columns}
-          dataSource={MOCK_INSPECTIONS}
+          dataSource={inspections}
           rowKey="id"
           search={false}
           pagination={{ pageSize: 10 }}
@@ -350,11 +351,11 @@ export default function InspectionsPage() {
         }
         style={{ marginTop: view === 'Calendar' ? 0 : 24 }}
       >
-        {UPCOMING.length === 0 ? (
+        {upcoming.length === 0 ? (
           <Text type="secondary">No inspections scheduled in the next 7 days.</Text>
         ) : (
           <List
-            dataSource={UPCOMING}
+            dataSource={upcoming}
             renderItem={(item) => (
               <List.Item
                 actions={[

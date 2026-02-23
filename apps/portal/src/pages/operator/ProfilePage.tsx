@@ -9,34 +9,18 @@ import {
   Avatar,
   Statistic,
   List,
+  Spin,
 } from 'antd';
 import { Pencil, Building2, Warehouse, FlaskConical } from 'lucide-react';
 import { NctsPageContainer, StatusBadge, TrackingId } from '@ncts/ui';
+import { useCurrentUser, useFacilities } from '@ncts/api-client';
+import { useAuth } from '../../contexts/AuthContext';
 
 const { Title, Text } = Typography;
 
 // ---------------------------------------------------------------------------
-// Mock Data — TODO: Replace with real API hooks
-// (useOperatorProfile, useOperatorFacilities, useOperatorStats)
+// Mock Data — monthly stats don't have an endpoint yet
 // ---------------------------------------------------------------------------
-
-const MOCK_OPERATOR = {
-  companyName: 'GreenPoint Cannabis (Pty) Ltd',
-  registrationNumber: '2024/123456/07',
-  licenseType: 'Cultivation & Processing',
-  licenseNumber: 'LIC-20250106-GP01',
-  contactPerson: 'John van der Merwe',
-  email: 'john@greenpoint.co.za',
-  phone: '+27 11 555 0123',
-  address: '42 Cannabis Drive, Stellenbosch, Western Cape, 7600',
-  memberSince: 'Jan 2025',
-};
-
-const MOCK_FACILITIES = [
-  { id: '1', name: 'Stellenbosch Cultivation Facility', type: 'Cultivation', status: 'active' as const },
-  { id: '2', name: 'Cape Town Processing Lab', type: 'Processing', status: 'active' as const },
-  { id: '3', name: 'Paarl Drying Warehouse', type: 'Storage', status: 'pending' as const },
-];
 
 const MOCK_MONTHLY_STATS = {
   plantsRegistered: 24,
@@ -62,6 +46,33 @@ const FACILITY_TAG_COLOR: Record<string, string> = {
 // ---------------------------------------------------------------------------
 
 export default function ProfilePage() {
+  const { user } = useAuth();
+  const { data: currentUserData, isLoading: isUserLoading } = useCurrentUser();
+  const { data: facilitiesResponse, isLoading: isFacilitiesLoading } = useFacilities();
+
+  const profileUser = currentUserData as any;
+  const facilities = ((facilitiesResponse as any)?.data ?? facilitiesResponse ?? []).map((f: any) => ({
+    id: f.id,
+    name: f.name,
+    type: f.type ? f.type.charAt(0).toUpperCase() + f.type.slice(1) : 'Other',
+    status: f.status ?? 'active',
+  }));
+
+  const operator = {
+    companyName: profileUser?.companyName ?? user?.firstName + ' ' + user?.lastName ?? '—',
+    registrationNumber: profileUser?.registrationNumber ?? '—',
+    licenseType: profileUser?.licenseType ?? '—',
+    licenseNumber: profileUser?.licenseNumber ?? '—',
+    contactPerson: profileUser ? `${profileUser.firstName} ${profileUser.lastName}` : (user ? `${user.firstName} ${user.lastName}` : '—'),
+    email: profileUser?.email ?? user?.email ?? '—',
+    phone: profileUser?.phone ?? '—',
+    address: profileUser?.address ?? '—',
+    memberSince: profileUser?.lastLoginAt ? new Date(profileUser.lastLoginAt).toLocaleDateString('en-ZA', { month: 'short', year: 'numeric' }) : '—',
+  };
+
+  const isLoading = isUserLoading || isFacilitiesLoading;
+  if (isLoading) return <div style={{display:'flex',justifyContent:'center',padding:'100px 0'}}><Spin size="large" /></div>;
+
   return (
     <NctsPageContainer
       title="Operator Profile"
@@ -77,28 +88,28 @@ export default function ProfilePage() {
           <Card title="Operator Information" style={{ marginBottom: 24 }}>
             <Descriptions column={{ xs: 1, sm: 2 }} bordered size="small">
               <Descriptions.Item label="Company Name">
-                {MOCK_OPERATOR.companyName}
+                {operator.companyName}
               </Descriptions.Item>
               <Descriptions.Item label="Registration Number">
-                {MOCK_OPERATOR.registrationNumber}
+                {operator.registrationNumber}
               </Descriptions.Item>
               <Descriptions.Item label="License Type">
-                <Tag color="green">{MOCK_OPERATOR.licenseType}</Tag>
+                <Tag color="green">{operator.licenseType}</Tag>
               </Descriptions.Item>
               <Descriptions.Item label="License Number">
-                <TrackingId id={MOCK_OPERATOR.licenseNumber} size="sm" />
+                <TrackingId id={operator.licenseNumber} size="sm" />
               </Descriptions.Item>
               <Descriptions.Item label="Contact Person">
-                {MOCK_OPERATOR.contactPerson}
+                {operator.contactPerson}
               </Descriptions.Item>
               <Descriptions.Item label="Email">
-                {MOCK_OPERATOR.email}
+                {operator.email}
               </Descriptions.Item>
               <Descriptions.Item label="Phone">
-                {MOCK_OPERATOR.phone}
+                {operator.phone}
               </Descriptions.Item>
               <Descriptions.Item label="Address" span={2}>
-                {MOCK_OPERATOR.address}
+                {operator.address}
               </Descriptions.Item>
             </Descriptions>
           </Card>
@@ -108,8 +119,8 @@ export default function ProfilePage() {
             extra={<Button type="link">Manage Facilities</Button>}
           >
             <List
-              dataSource={MOCK_FACILITIES}
-              renderItem={(facility) => (
+              dataSource={facilities}
+              renderItem={(facility: any) => (
                 <List.Item
                   key={facility.id}
                   actions={[<StatusBadge status={facility.status} size="sm" />]}
@@ -148,12 +159,12 @@ export default function ProfilePage() {
               GP
             </Avatar>
             <Title level={4} style={{ marginBottom: 4 }}>
-              {MOCK_OPERATOR.companyName}
+              {operator.companyName}
             </Title>
             <div style={{ marginBottom: 8 }}>
               <StatusBadge status="active" size="sm" />
             </div>
-            <Text type="secondary">Member since {MOCK_OPERATOR.memberSince}</Text>
+            <Text type="secondary">Member since {operator.memberSince}</Text>
           </Card>
 
           <Card title="This Month">

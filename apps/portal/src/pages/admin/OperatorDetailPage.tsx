@@ -11,6 +11,7 @@ import {
   Descriptions,
   Tag,
   Progress,
+  Spin,
   Statistic,
   Table,
   Timeline,
@@ -29,6 +30,7 @@ import {
   TrackingId,
   NctsPageContainer,
 } from '@ncts/ui';
+import { useOperators } from '@ncts/api-client';
 
 // ---------------------------------------------------------------------------
 // Mock Operator — TODO: Replace with API hook using id param
@@ -147,10 +149,29 @@ const DIRECTION_COLOR: Record<string, string> = {
 
 export default function OperatorDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const op = MOCK_OPERATOR; // TODO: fetch by id from API
+  const { data: operatorsResponse, isLoading } = useOperators({ limit: 200 });
 
-  // Suppress unused lint for route param — will be used with real API
-  void id;
+  if (isLoading) return <div style={{display:'flex',justifyContent:'center',padding:'100px 0'}}><Spin size="large" /></div>;
+
+  const operators = operatorsResponse?.data?.data ?? operatorsResponse?.data ?? [];
+  const matched = (operators as any[]).find((o: any) => o.id === id);
+  const op = matched
+    ? {
+        id: matched.id,
+        name: matched.name ?? matched.companyName ?? '',
+        registrationNumber: matched.registrationNumber ?? matched.id,
+        licenseType: (matched.licenseType ?? 'cultivation') as 'cultivation' | 'processing' | 'distribution' | 'retail' | 'combined',
+        contactPerson: matched.contactPerson ?? '',
+        email: matched.email ?? '',
+        phone: matched.phone ?? '',
+        address: matched.address ?? '',
+        province: matched.province ?? '',
+        memberSince: matched.createdAt ?? '',
+        complianceScore: matched.complianceScore ?? 0,
+        activePlants: matched.plantCount ?? 0,
+        permitStatus: (matched.permitStatus ?? matched.status ?? 'active') as 'active' | 'suspended' | 'pending' | 'revoked' | 'expired',
+      }
+    : MOCK_OPERATOR; // fallback to mock if not found
 
   // -- Facility columns -----------------------------------------------------
   const facilityColumns: ColumnsType<(typeof MOCK_FACILITIES)[number]> = [

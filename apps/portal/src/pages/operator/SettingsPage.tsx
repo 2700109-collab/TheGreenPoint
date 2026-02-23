@@ -22,8 +22,8 @@ import { NctsPageContainer } from '@ncts/ui';
 const { Text, Paragraph, Title } = Typography;
 
 // ---------------------------------------------------------------------------
-// Mock Data — TODO: Replace with real API hooks / settings service
-// (useOperatorSettings, useNotificationPrefs, useApiKeys, useDataExport)
+// Mock Data — settings don't have a proper endpoint yet
+// TODO: Wire to /settings API when available
 // ---------------------------------------------------------------------------
 
 const MOCK_GENERAL = {

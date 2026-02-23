@@ -19,6 +19,7 @@ import {
   Row,
   Select,
   Space,
+  Spin,
   Switch,
   Tag,
   Timeline,
@@ -35,6 +36,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { StatusBadge, TrackingId, NctsPageContainer, DataFreshness } from '@ncts/ui';
+import { useInspection } from '@ncts/api-client';
 
 dayjs.extend(relativeTime);
 
@@ -124,9 +126,26 @@ const TIMELINE_EVENTS = [
 export default function InspectionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { data: inspectionResponse, isLoading } = useInspection(id ?? '');
 
-  const inspection = { ...MOCK_INSPECTION, id: id ?? MOCK_INSPECTION.id };
+  // Map API data or fall back to mock
+  const rawInsp = inspectionResponse?.data ?? inspectionResponse;
+  const inspection = rawInsp
+    ? {
+        id: (rawInsp as any).id ?? id ?? MOCK_INSPECTION.id,
+        facilityId: (rawInsp as any).facilityId ?? MOCK_INSPECTION.facilityId,
+        facilityName: (rawInsp as any).facilityName ?? (rawInsp as any).facility?.name ?? MOCK_INSPECTION.facilityName,
+        type: ((rawInsp as any).type ?? MOCK_INSPECTION.type) as InspectionType,
+        status: ((rawInsp as any).status ?? MOCK_INSPECTION.status) as InspectionStatus,
+        priority: (rawInsp as any).priority ?? MOCK_INSPECTION.priority,
+        scheduledDate: (rawInsp as any).scheduledDate ?? MOCK_INSPECTION.scheduledDate,
+        inspector: (rawInsp as any).inspector ?? (rawInsp as any).inspectorName ?? MOCK_INSPECTION.inspector,
+        estimatedDuration: (rawInsp as any).estimatedDuration ?? MOCK_INSPECTION.estimatedDuration,
+      }
+    : { ...MOCK_INSPECTION, id: id ?? MOCK_INSPECTION.id };
   const status = inspection.status;
+
+  if (isLoading) return <div style={{display:'flex',justifyContent:'center',padding:'100px 0'}}><Spin size="large" /></div>;
 
   // ── Checklist state ─────────────────────────────────────────────
   const [checklist, setChecklist] = useState<ChecklistItem[]>(MOCK_CHECKLIST);

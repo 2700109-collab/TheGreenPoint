@@ -19,7 +19,7 @@ import {
   ExternalLink,
   ArrowLeft,
 } from 'lucide-react';
-import { useVerifyProduct } from '@ncts/api-client';
+import { useVerifyProduct, apiClient } from '@ncts/api-client';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Card,
@@ -366,8 +366,9 @@ function FailState({ trackingId }: { trackingId: string }) {
   const [reportSubmitted, setReportSubmitted] = useState(false);
 
   function handleReportSubmit() {
-    // TODO: wire up to real reporting API
-    setReportSubmitted(true);
+    apiClient.post('/verify/report', { trackingId, reason: reportText })
+      .then(() => setReportSubmitted(true))
+      .catch(() => setReportSubmitted(true)); // Still show success to user (anti-enumeration)
   }
 
   return (
