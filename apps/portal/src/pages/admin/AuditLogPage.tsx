@@ -107,7 +107,7 @@ export default function AuditLogPage() {
   const auditEntries: AuditEntry[] = (auditResponse?.data ?? auditResponse ?? []).map((e: any) => ({
     id: e.id,
     timestamp: e.timestamp,
-    actorName: e.actorName ?? `${e.firstName ?? ''} ${e.lastName ?? ''}`.trim() || e.userId || 'System',
+    actorName: e.actorName ?? (`${e.firstName ?? ''} ${e.lastName ?? ''}`.trim() || e.userId || 'System'),
     actorRole: e.actorRole ?? e.role ?? 'System',
     action: (e.action ?? 'view') as AuditAction,
     entity: e.entityType ?? e.entity ?? '',
