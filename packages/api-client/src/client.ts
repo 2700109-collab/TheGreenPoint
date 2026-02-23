@@ -16,10 +16,19 @@ export class ApiError extends Error {
 /** Base URL — Vite proxy maps /api → http://localhost:3000 */
 const BASE_URL = '/api/v1';
 
+// ── DEBUG HELPER ───────────────────────────────────────────────────
+const API_DEBUG = '[API-CLIENT-DEBUG]';
+function apiDebug(step: string, data?: unknown) {
+  console.log(`${API_DEBUG} ${step}`, data !== undefined ? data : '');
+}
+// ───────────────────────────────────────────────────────────────────
+
 async function handleResponse<T>(response: Response): Promise<T> {
+  apiDebug('RESPONSE', { status: response.status, statusText: response.statusText, url: response.url, type: response.type });
   if (!response.ok) {
     // 401 Unauthorized — clear stale token and redirect to login
     if (response.status === 401) {
+      apiDebug('401 Unauthorized — clearing token');
       localStorage.removeItem('ncts_token');
       // Only redirect if we're in a browser context and not already on /login
       if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
@@ -32,11 +41,14 @@ async function handleResponse<T>(response: Response): Promise<T> {
     } catch {
       body = await response.text();
     }
+    apiDebug('ERROR BODY', body);
     throw new ApiError(response.status, response.statusText, body);
   }
   // Handle 204 No Content
   if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
+  const json = await response.json() as T;
+  apiDebug('SUCCESS BODY', json);
+  return json;
 }
 
 function buildUrl(path: string, params?: Record<string, string | number | boolean | undefined>): string {
@@ -64,7 +76,9 @@ function getHeaders(): HeadersInit {
 
 export const apiClient = {
   async get<T>(path: string, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
-    const res = await fetch(buildUrl(path, params), {
+    const url = buildUrl(path, params);
+    apiDebug('GET →', { url, headers: getHeaders() });
+    const res = await fetch(url, {
       method: 'GET',
       headers: getHeaders(),
     });
@@ -72,7 +86,9 @@ export const apiClient = {
   },
 
   async post<T>(path: string, body?: unknown): Promise<T> {
-    const res = await fetch(buildUrl(path), {
+    const url = buildUrl(path);
+    apiDebug('POST →', { url, bodyPreview: JSON.stringify(body)?.substring(0, 200) });
+    const res = await fetch(url, {
       method: 'POST',
       headers: getHeaders(),
       body: body ? JSON.stringify(body) : undefined,

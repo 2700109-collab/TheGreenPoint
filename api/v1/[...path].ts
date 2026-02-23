@@ -68,36 +68,49 @@ const DEMO = [
 // AUTH
 // ============================================================================
 async function handleAuth(req: VercelRequest, res: VercelResponse, seg: string[]) {
+  console.log('[SERVER-AUTH-DEBUG] handleAuth called', { seg, method: req.method, bodyKeys: req.body ? Object.keys(req.body) : 'NO BODY' });
   if (seg[1] === 'login' && req.method === 'POST') {
     const { email, password } = req.body ?? {};
+    console.log('[SERVER-AUTH-DEBUG] login attempt', { email, hasPassword: !!password, passwordLength: password?.length });
     const acct = DEMO.find(a => a.email === email && a.password === password);
-    if (!acct) return res.status(401).json({ error: 'Invalid credentials' });
+    console.log('[SERVER-AUTH-DEBUG] demo account match', { found: !!acct, demoEmails: DEMO.map(d => d.email) });
+    if (!acct) {
+      console.log('[SERVER-AUTH-DEBUG] REJECT — no matching demo account');
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
 
     // Try DB lookup first; fall back to in-memory demo user if DB unavailable
     try {
+      console.log('[SERVER-AUTH-DEBUG] trying DB lookup for', email);
       let user = await prisma.user.findUnique({ where: { email }, include: { tenant: true } });
+      console.log('[SERVER-AUTH-DEBUG] DB user found:', !!user, user ? { id: user.id, role: user.role } : null);
       if (!user) {
         let tenantId: string | null = null;
         if (acct.role === 'operator_admin') {
           const t = await prisma.tenant.findFirst();
           tenantId = t?.id ?? null;
+          console.log('[SERVER-AUTH-DEBUG] operator tenant lookup', { tenantId });
         }
         user = await prisma.user.create({
           data: { email: acct.email, firstName: acct.firstName, lastName: acct.lastName, role: acct.role, tenantId },
           include: { tenant: true },
         });
+        console.log('[SERVER-AUTH-DEBUG] created new user', { id: user.id });
       }
 
       const token = signJwt({ userId: user.id, email: user.email, role: user.role, tenantId: user.tenantId, firstName: user.firstName, lastName: user.lastName });
+      console.log('[SERVER-AUTH-DEBUG] JWT signed, returning token', { tokenLength: token.length, userId: user.id });
       return res.json({ accessToken: token, user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role, tenantId: user.tenantId } });
     } catch (dbErr) {
       // Database unavailable — issue token from in-memory demo account
-      console.warn('DB unavailable for login, using in-memory fallback:', (dbErr as Error).message);
+      console.warn('[SERVER-AUTH-DEBUG] DB ERROR — falling back to in-memory:', (dbErr as Error).message, (dbErr as Error).stack);
       const fallbackId = crypto.randomUUID();
       const token = signJwt({ userId: fallbackId, email: acct.email, role: acct.role, tenantId: null, firstName: acct.firstName, lastName: acct.lastName });
+      console.log('[SERVER-AUTH-DEBUG] fallback JWT signed', { tokenLength: token.length, fallbackId });
       return res.json({ accessToken: token, user: { id: fallbackId, email: acct.email, firstName: acct.firstName, lastName: acct.lastName, role: acct.role, tenantId: null } });
     }
   }
+  console.log('[SERVER-AUTH-DEBUG] no matching auth route', { seg });
   return res.status(404).json({ error: 'Not found' });
 }
 
@@ -334,6 +347,7 @@ async function handleRegulatory(req: VercelRequest, res: VercelResponse, seg: st
 // VERIFY
 // ============================================================================
 async function handleVerify(req: VercelRequest, res: VercelResponse, seg: string[]) {
+  console.log('[SERVER-VERIFY-DEBUG] handleVerify called', { method: req.method, seg, url: req.url });
   if (req.method === 'POST' && seg[1] === 'report') {
     console.log('[SUSPICIOUS REPORT]', req.body);
     return res.json({ success: true, message: 'Report received' });
@@ -341,33 +355,51 @@ async function handleVerify(req: VercelRequest, res: VercelResponse, seg: string
 
   if (req.method === 'GET' && seg.length === 2) {
     const trackingId = seg[1];
-    const plant = await prisma.plant.findUnique({
-      where: { trackingId },
-      include: {
-        strain: { select: { name: true, type: true } },
-        batch: { include: { labResult: true, facility: { select: { name: true } } } },
-        tenant: { select: { name: true, tradingName: true } },
-      },
-    });
-    if (!plant) return res.status(404).json({ error: 'Not found' });
+    console.log('[SERVER-VERIFY-DEBUG] looking up trackingId:', trackingId);
+    try {
+      const plant = await prisma.plant.findUnique({
+        where: { trackingId },
+        include: {
+          strain: { select: { name: true, type: true } },
+          batch: { include: { labResult: true, facility: { select: { name: true } } } },
+          tenant: { select: { name: true, tradingName: true } },
+        },
+      });
+      console.log('[SERVER-VERIFY-DEBUG] DB result', { found: !!plant, plantId: plant?.id, strain: plant?.strain?.name, hasBatch: !!plant?.batch });
+      if (!plant) {
+        console.log('[SERVER-VERIFY-DEBUG] plant NOT FOUND for trackingId:', trackingId);
+        // Also list some existing trackingIds to help debug
+        try {
+          const sample = await prisma.plant.findMany({ take: 5, select: { trackingId: true } });
+          console.log('[SERVER-VERIFY-DEBUG] sample trackingIds in DB:', sample.map((p: any) => p.trackingId));
+        } catch (e) { console.log('[SERVER-VERIFY-DEBUG] could not fetch samples:', String(e)); }
+        return res.status(404).json({ error: 'Not found', debug: { trackingId, message: 'No plant found with this trackingId' } });
+      }
 
-    return res.json({
-      trackingId,
-      productName: `${plant.strain.name} (${plant.strain.type})`,
-      strain: plant.strain.name,
-      operatorName: plant.tenant.tradingName || plant.tenant.name,
-      batchNumber: plant.batch?.batchNumber ?? 'N/A',
-      labResult: plant.batch?.labResult ? {
-        status: plant.batch.labResult.status,
-        thcPercent: plant.batch.labResult.thcPercent,
-        cbdPercent: plant.batch.labResult.cbdPercent,
-        testDate: plant.batch.labResult.testDate.toISOString().slice(0, 10),
-        labName: plant.batch.labResult.labName,
-      } : null,
-      chainOfCustody: [],
-      verifiedAt: new Date().toISOString(),
-    });
+      const result = {
+        trackingId,
+        productName: `${plant.strain.name} (${plant.strain.type})`,
+        strain: plant.strain.name,
+        operatorName: plant.tenant.tradingName || plant.tenant.name,
+        batchNumber: plant.batch?.batchNumber ?? 'N/A',
+        labResult: plant.batch?.labResult ? {
+          status: plant.batch.labResult.status,
+          thcPercent: plant.batch.labResult.thcPercent,
+          cbdPercent: plant.batch.labResult.cbdPercent,
+          testDate: plant.batch.labResult.testDate.toISOString().slice(0, 10),
+          labName: plant.batch.labResult.labName,
+        } : null,
+        chainOfCustody: [],
+        verifiedAt: new Date().toISOString(),
+      };
+      console.log('[SERVER-VERIFY-DEBUG] returning verification result', { trackingId: result.trackingId, productName: result.productName });
+      return res.json(result);
+    } catch (dbErr) {
+      console.error('[SERVER-VERIFY-DEBUG] DB ERROR during verify', { error: (dbErr as Error).message, stack: (dbErr as Error).stack });
+      return res.status(500).json({ error: 'Database error during verification', debug: (dbErr as Error).message });
+    }
   }
+  console.log('[SERVER-VERIFY-DEBUG] no matching verify route', { method: req.method, seg });
   return res.status(404).json({ error: 'Not found' });
 }
 
@@ -471,13 +503,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  // Parse URL to extract path segments (handles both Vercel query.path and raw URL)
+  const url = new URL(req.url ?? '/', `https://${req.headers.host ?? 'localhost'}`);
+  const urlPath = url.pathname.replace(/^\/api\/v1\/?/, '').replace(/\/$/, '');
   const pathArr = req.query.path;
-  const seg: string[] = Array.isArray(pathArr) ? pathArr : pathArr ? [pathArr] : [];
+  const seg: string[] = Array.isArray(pathArr) ? pathArr
+    : pathArr ? [pathArr]
+    : urlPath ? urlPath.split('/') : [];
   const resource = seg[0];
+
+  console.log('[SERVER-ROUTER-DEBUG] ▶ incoming request', {
+    method: req.method,
+    rawUrl: req.url,
+    parsedUrlPath: urlPath,
+    queryPath: req.query.path,
+    seg,
+    resource,
+    host: req.headers.host,
+    origin: req.headers.origin,
+    contentType: req.headers['content-type'],
+    hasBody: !!req.body,
+  });
 
   try {
     // Ensure the Prisma singleton is initialised before any handler runs
+    console.log('[SERVER-ROUTER-DEBUG] initializing Prisma...');
     getPrisma();
+    console.log('[SERVER-ROUTER-DEBUG] Prisma ready, routing to:', resource);
 
     switch (resource) {
       case 'auth': return await handleAuth(req, res, seg);
@@ -492,10 +544,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'verify': return await handleVerify(req, res, seg);
       case 'seed': return await handleSeed(req, res);
       case 'health': return res.json({ status: 'ok', timestamp: new Date().toISOString() });
-      default: return res.status(404).json({ error: `Route not found: /api/v1/${seg.join('/')}` });
+      default:
+        console.log('[SERVER-ROUTER-DEBUG] 404 — unknown resource', { resource, seg });
+        return res.status(404).json({ error: `Route not found: /api/v1/${seg.join('/')}` });
     }
   } catch (err: any) {
-    console.error('API Error:', err);
-    return res.status(500).json({ error: err.message ?? 'Internal server error' });
+    console.error('[SERVER-ROUTER-DEBUG] UNHANDLED ERROR', { message: err.message, stack: err.stack });
+    return res.status(500).json({ error: err.message ?? 'Internal server error', debug: { stack: err.stack?.substring(0, 500) } });
   }
 }

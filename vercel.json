@@ -9,9 +9,7 @@
       "includeFiles": "packages/database/generated/**"
     }
   },
-  "routes": [
-    { "src": "/api/v1/(.*)", "dest": "/api/v1/$1" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
