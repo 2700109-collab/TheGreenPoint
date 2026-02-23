@@ -30,6 +30,8 @@ const MfaPage = lazy(() => import('./pages/MfaPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage'));
+const ForbiddenPage = lazy(() => import('./pages/ForbiddenPage'));
+const ServerErrorPage = lazy(() => import('./pages/ServerErrorPage'));
 
 // ---------------------------------------------------------------------------
 // Operator pages (13)
@@ -90,7 +92,7 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
   const { user, isLoading } = useAuth();
   if (isLoading) return <PageSpinner />;
   if (!user) return <Navigate to="/login" replace />;
-  if (allowedRoles && !allowedRoles.includes(user.role)) return <Navigate to="/login" replace />;
+  if (allowedRoles && !allowedRoles.includes(user.role)) return <Navigate to="/403" replace />;
   return <>{children}</>;
 }
 
@@ -212,6 +214,8 @@ export default function App() {
         } />
 
         {/* Catch-all 404 */}
+        <Route path="/403" element={<ForbiddenPage />} />
+        <Route path="/500" element={<ServerErrorPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>

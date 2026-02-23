@@ -26,7 +26,7 @@ function hashPassword(password: string): string {
 function verifyPassword(password: string, stored: string): boolean {
   const [salt, hash] = stored.split(':');
   const verify = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
-  return hash === verify;
+  return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(verify, 'hex'));
 }
 
 // ============================================================================
@@ -126,7 +126,7 @@ function decodeJwt(req: VercelRequest): Record<string, any> | null {
   try {
     const [h, b, s] = auth.slice(7).split('.');
     const sig = crypto.createHmac('sha256', JWT_SECRET).update(`${h}.${b}`).digest('base64url');
-    if (sig !== s) return null;
+    if (sig.length !== s.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(s))) return null;
     const payload = JSON.parse(Buffer.from(b, 'base64url').toString());
     if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
     return payload;
@@ -568,6 +568,7 @@ async function handleTransfers(req: VercelRequest, res: VercelResponse, seg: str
   if (req.method === 'PATCH' && seg.length === 3 && seg[2] === 'accept') {
     const existing = await prisma.transfer.findUnique({ where: { id: seg[1] } });
     if (!existing) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Not found' } });
+    if (tenantFilter.tenantId && existing.tenantId !== tenantFilter.tenantId && existing.senderTenantId !== tenantFilter.tenantId && existing.receiverTenantId !== tenantFilter.tenantId) throw new ForbiddenError();
     const updated = await prisma.transfer.update({ where: { id: seg[1] }, data: { status: 'accepted', completedAt: new Date() } });
     await writeAuditEvent(prisma, { entityType: 'Transfer', entityId: seg[1], action: 'TRANSFER_ACCEPTED', actorId: jwt.userId, actorRole: jwt.role, tenantId: existing.tenantId, payload: { transferNumber: existing.transferNumber }, ipAddress: extractIp(req) });
     return res.json(updated);
@@ -575,6 +576,7 @@ async function handleTransfers(req: VercelRequest, res: VercelResponse, seg: str
   if (req.method === 'PATCH' && seg.length === 3 && seg[2] === 'reject') {
     const existing = await prisma.transfer.findUnique({ where: { id: seg[1] } });
     if (!existing) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Not found' } });
+    if (tenantFilter.tenantId && existing.tenantId !== tenantFilter.tenantId && existing.senderTenantId !== tenantFilter.tenantId && existing.receiverTenantId !== tenantFilter.tenantId) throw new ForbiddenError();
     const updated = await prisma.transfer.update({ where: { id: seg[1] }, data: { status: 'rejected' } });
     await writeAuditEvent(prisma, { entityType: 'Transfer', entityId: seg[1], action: 'TRANSFER_REJECTED', actorId: jwt.userId, actorRole: jwt.role, tenantId: existing.tenantId, payload: { transferNumber: existing.transferNumber }, ipAddress: extractIp(req) });
     return res.json(updated);
@@ -979,6 +981,9 @@ async function handleNotifications(req: VercelRequest, res: VercelResponse, seg:
     return res.json(data);
   }
   if (req.method === 'PATCH' && seg.length === 3 && seg[2] === 'read') {
+    const notif = await prisma.notification.findUnique({ where: { id: seg[1] } });
+    if (!notif) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Not found' } });
+    if (notif.userId !== jwt.userId) throw new ForbiddenError();
     return res.json(await prisma.notification.update({ where: { id: seg[1] }, data: { readAt: new Date() } }));
   }
   return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Not found' } });

@@ -30,11 +30,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <ConfigProvider theme={themeConfig} locale={enUS}>
-          <AuthProvider>
-            <ErrorBoundary>
+          <ErrorBoundary>
+            <AuthProvider>
               <App />
-            </ErrorBoundary>
-          </AuthProvider>
+            </AuthProvider>
+          </ErrorBoundary>
         </ConfigProvider>
       </QueryClientProvider>
     </BrowserRouter>
